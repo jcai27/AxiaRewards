@@ -22,7 +22,7 @@ function outcome(r:Row,ev:Evaluation,automationOn:boolean){
     if(ev.recommendation==="DECLINE")return {tone:"decline",title:"Held · suggest decline",detail:`${ev.declineReason} · condition ${conditionNumber(fail!.id)}`};
     if(ev.recommendation==="REVIEW")return {tone:"review",title:"Held · needs review",detail:warns.map(w=>`${conditionNumber(w.id)} ${w.label.toLowerCase()}`).join(" · ")};
     if(r.payment_hold)return {tone:"review",title:"Held · fraud-review hold",detail:"Approval is blocked until the fraud case is closed"};
-    return {tone:"ready",title:"Meets every condition",detail:automationOn?"Approved on the next engine run, or approve it now":"Automatic approval is paused; approve it to release"};
+    return {tone:"ready",title:"Meets every condition",detail:automationOn?"Approved on the next engine run, or approve it now":"Automatic approval is paused for the program or this promotion; approve manually to release"};
   }
   if(approvedStatuses.includes(r.status))return {tone:"approved",title:"Approved",detail:`${r.approved_declined_by||"Recorded"} · ${dateLabel(r.date_approved_declined)}${r.program_invoice_number?` · ${r.program_invoice_number}`:""}`};
   if(r.status==="DECLINED")return {tone:"decline",title:"Declined",detail:`${r.decline_reason||"No reason recorded"} · ${dateLabel(r.date_approved_declined)}`};
@@ -33,7 +33,10 @@ function outcome(r:Row,ev:Evaluation,automationOn:boolean){
 
 export function DecisionRecord({rebate:r,data,go,reload,notify,readOnly,onDecided,linkToRecord=false}:PageProps&{rebate:Row,onDecided?:(r:Row)=>void,linkToRecord?:boolean}){
   const {get}=useDecisions(data);
-  const ev=get(r),result=outcome(r,ev,data.automation?.enabled!==false);
+  const current=get(r);
+  const recorded=r.status!=="PENDING"&&r.status!=="REBATE_REGISTRATION"&&Array.isArray(r.decision?.checks);
+  const ev:Evaluation=recorded?{...current,checks:r.decision.checks,promotion:r.decision.promotion_policy,recommendation:r.decision.recommendation,version:r.decision.engine_version}:current;
+  const result=outcome(r,ev,data.automation?.enabled!==false&&ev.promotion?.settings.auto_approve!==false);
   const [confirm,setConfirm]=useState<""|"APPROVED"|"DECLINED">(""),[reason,setReason]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
   const reasonValue=reason||ev.declineReason||"";
   const groups=[...new Set(RULES.map(rule=>rule.group))];
@@ -51,16 +54,16 @@ export function DecisionRecord({rebate:r,data,go,reload,notify,readOnly,onDecide
     <dl className="record-ref">
       <div><dt>Rebate</dt><dd>{r.tracking_number}</dd></div>
       <div><dt>Amount</dt><dd>{money(r.rebate_amount)}</dd></div>
-      <div><dt>Campaign</dt><dd>{r.rebate_code}</dd></div>
+      <div><dt>Campaign</dt><dd><button className="tracking-link" onClick={()=>go(`/promotion-codes?code=${encodeURIComponent(r.rebate_code)}`)}>{r.rebate_code}</button></dd></div>
       <div><dt>Submitted</dt><dd>{dateLabel(r.date_submitted)}</dd></div>
     </dl>
-    <div className="record-re"><p>Re: <b>{fullName(r)}</b>, {[r.address1,r.city].filter(Boolean).join(", ")}, {r.state} {r.zip}</p>{linkToRecord&&<button className="text-button" onClick={()=>go(`/rebate/${r.tracking_number}`)}>Open full record</button>}</div>
+    <div className="record-re"><p>Re: <b>{fullName(r)}</b>, {[r.address1,r.city].filter(Boolean).join(", ")}, {r.state} {r.zip}</p>{linkToRecord&&<button className="text-button" onClick={()=>go(`/rebate/${r.tracking_number}`)}>Open full record</button>}{ev.promotion&&<small>Promotion settings revision {ev.promotion.revision} · {recorded?"Recorded at decision":r.status==="PENDING"?"Current eligibility":"Current eligibility; original checks were not recorded"}</small>}</div>
     <div className="record-body">{groups.map(g=><section className="record-group" key={g} aria-label={g}>
       <h3>{g}</h3>
       <ol>{ev.checks.filter(c=>RULES.find(rule=>rule.id===c.id)?.group===g).map(c=><li key={c.id} className={`cond cond-${c.status}`}>
         <span className="cond-n">{conditionNumber(c.id)}</span>
         <div><b>{c.label}</b><small>{c.detail}</small></div>
-        <span className="cond-status">{statusWord[c.status]}</span>
+        <span className="cond-status">{c.notRequired?"Not required":statusWord[c.status]}</span>
       </li>)}</ol>
     </section>)}</div>
     <div className={`record-outcome outcome-${result.tone}`} role="status"><b>{result.title}</b><span>{result.detail}</span></div>
@@ -90,7 +93,8 @@ export function ReviewQueue({data,go,reload,notify,readOnly}:PageProps){
   const [rec,setRec]=useState(params.get("rec")||"all"),[rule,setRule]=useState(params.get("rule")||"");
   const [selectedId,setSelectedId]=useState<string|null>(null),[checked,setChecked]=useState<string[]>([]),[limit,setLimit]=useState(PAGE);
   const [bulk,setBulk]=useState<""|"SUGGESTED"|"APPROVED"|"DECLINED">(""),[bulkReason,setBulkReason]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
-  const matches=(r:Row)=>!term||Object.values(r).filter(v=>typeof v!=="object").join(" ").toLowerCase().includes(term.toLowerCase());
+  const promotionCode=params.get("code")||"";
+  const matches=(r:Row)=>(!promotionCode||r.rebate_code===promotionCode)&&(!term||Object.values(r).filter(v=>typeof v!=="object").join(" ").toLowerCase().includes(term.toLowerCase()));
   const held:Row[]=data.rebates.filter((r:Row)=>r.status==="PENDING"&&matches(r)).sort((a:Row,b:Row)=>a.date_submitted.localeCompare(b.date_submitted)||a.tracking_number.localeCompare(b.tracking_number));
   const counts={all:held.length,decline:0,review:0,approve:0} as Record<string,number>;
   for(const r of held)counts[get(r).recommendation.toLowerCase()]++;
@@ -125,7 +129,7 @@ export function ReviewQueue({data,go,reload,notify,readOnly}:PageProps){
   const setFilter=(v:string)=>{setRec(v);setLimit(PAGE);setChecked([]);setSelectedId(null);};
   return <div className="review">
     <section className="queue" aria-labelledby="queue-title">
-      <div className="queue-head"><h1 id="queue-title">Review queue</h1><p>{counts.all.toLocaleString()} rebate{counts.all===1?"":"s"} held for a person · longest waiting first</p>
+      <div className="queue-head"><h1 id="queue-title">Review queue</h1>{promotionCode&&<p>Promotion: <b>{promotionCode}</b> ? <button className="text-button" onClick={()=>go("/pending-rebates")}>All codes</button></p>}<p>{counts.all.toLocaleString()} rebate{counts.all===1?"":"s"} held for a person · longest waiting first</p>
         <p className={`queue-auto ${data.automation?.enabled===false?"off":""}`}><i aria-hidden="true"/>Automatic approval {data.automation?.enabled===false?"paused":"on"} · <button className="text-button" onClick={()=>go("/decision-rules")}>Rules</button></p></div>
       <form className="queue-search" onSubmit={e=>{e.preventDefault();setTerm(search.trim());setLimit(PAGE);setChecked([]);setSelectedId(null);}}>
         <div className="search-input"><Search size={16}/><input aria-label="Search rebates" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, tracking number, code…"/>{search&&<button type="button" aria-label="Clear search" onClick={()=>{setSearch("");setTerm("");}}><X size={14}/></button>}</div>

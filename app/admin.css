@@ -611,3 +611,66 @@
 }
 
 .inv-logo{height:52px;width:auto;display:block}
+
+/* Per-promotion eligibility settings share the admin document system. */
+.promotion-layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:24px;align-items:start}
+.promotion-directory{background:var(--ax-surface);border:1px solid var(--ax-line-strong);border-radius:12px;overflow:hidden;position:sticky;top:84px}
+.promotion-search{display:flex;align-items:center;gap:8px;padding:14px;border-bottom:1px solid var(--ax-line)}
+.promotion-search input{width:100%;min-width:0;font:inherit;font-size:13px;padding:8px}
+.promotion-count{padding:10px 14px;font-size:12px;color:var(--ax-text-3)}
+.promotion-code-list{max-height:calc(100dvh - 250px);overflow-y:auto;scrollbar-color:var(--ax-line-strong) var(--ax-ground)}
+.promotion-code-list>button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px;width:100%;padding:14px;text-align:left;border-top:1px solid var(--ax-line);color:var(--ax-ink)}
+.promotion-code-list>button:hover{background:var(--ax-subtle)}
+.promotion-code-list>button.current{background:var(--ax-brand-soft);box-shadow:inset 0 0 0 1px var(--ax-brand)}
+.promotion-code-list strong{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.promotion-code-list small{display:block;font-size:12px;color:var(--ax-text-2);margin-top:3px}
+.promotion-list-meta{grid-column:1/-1;font-size:12px;color:var(--ax-text-2)}
+.promotion-code-list .pill{justify-self:start}
+.promotion-manual{font-size:11px;color:var(--ax-text-3)}
+.promotion-editor{min-width:0}
+.promotion-editor>form,.promotion-preview{background:var(--ax-surface);border:1px solid var(--ax-line-strong);border-radius:12px;overflow:hidden}
+.promotion-heading{padding:20px 24px;background:var(--ax-brand);color:white;display:flex;align-items:start;justify-content:space-between;gap:16px}
+.admin-app .promotion-heading h2{font-size:20px;color:white;overflow-wrap:anywhere}
+.promotion-heading p{font-size:12px;margin:5px 0 0;color:#b8f1ef}
+.promotion-heading .button{flex-shrink:0}
+.promotion-fields{border:0;margin:0;padding:0;min-width:0}
+.promotion-section{padding:22px 24px;border-bottom:1px solid var(--ax-line)}
+.promotion-section h3{font-size:16px;margin-bottom:18px;font-weight:500}
+.promotion-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px}
+.promotion-editor .field{margin:0;display:flex;flex-direction:column;gap:5px;min-width:0}
+.promotion-editor .field>span,.promotion-options legend{font-size:13px;font-weight:500;line-height:1.5}
+.promotion-editor .field>input,.promotion-editor .field>select{width:100%;min-width:0;font:inherit;font-size:14px;min-height:40px;padding:8px 10px}
+.promotion-editor .field small,.promotion-check small{display:block;font-size:12px;color:var(--ax-text-3);line-height:1.6}
+.promotion-section>.field{margin-top:18px}
+.promotion-check{display:flex;gap:10px;align-items:start;font-size:13px;line-height:1.5;cursor:pointer}
+.promotion-check input,.promotion-options input{width:16px;height:16px;flex-shrink:0;margin-top:2px}
+.promotion-check b{font-weight:500}
+.promotion-options{margin:18px 0 0;padding:12px 14px;border:1px solid var(--ax-line);border-radius:8px;display:flex;gap:12px 20px;flex-wrap:wrap}
+.promotion-options legend{padding:0 5px}
+.promotion-options label{display:flex;align-items:center;gap:8px;font-size:13px}
+.promotion-evidence{display:grid;gap:14px}
+.promotion-section .form-note{font-size:12px;line-height:1.7;color:var(--ax-text-2);margin-top:18px}
+.promotion-save{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;background:var(--ax-subtle)}
+.promotion-save p{font-size:12px;color:var(--ax-text-2);max-width:64ch}
+.promotion-save .button{flex-shrink:0}
+.promotion-notice,.promotion-validation{font-size:13px;padding:12px 24px;color:var(--ax-warn)}
+.promotion-preview{margin-top:24px;padding:20px 24px}
+.promotion-preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.promotion-preview h3{font-size:17px}
+.promotion-preview>p{font-size:13px;color:var(--ax-text-2);margin-top:6px}
+.promotion-impact{margin:16px 0;padding:14px 0;border-top:1px solid var(--ax-line);border-bottom:1px solid var(--ax-line);display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px}
+.promotion-impact strong{font-weight:500}
+.promotion-impact span:last-child{flex-basis:100%;color:var(--ax-text-3)}
+.promotion-example{display:flex;flex-direction:column;gap:5px;padding:16px 0;font-size:13px}
+.promotion-example>b{font-weight:500}
+.promotion-example>span:last-child{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.promotion-checks{list-style:none;margin:0;padding:0}
+.promotion-checks li{display:flex;align-items:start;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--ax-line-soft)}
+.promotion-checks b{font-size:13px;font-weight:500}
+.promotion-checks small{font-size:12px;display:block;color:var(--ax-text-3);line-height:1.6;margin-top:3px}
+.condition-result{font-size:12px;flex-shrink:0;font-weight:500}
+.record-re>small{flex-basis:100%;font-size:12px;color:var(--ax-text-3)}
+.result-pass{color:var(--ax-ok)}.result-fail{color:var(--ax-bad)}.result-warn{color:var(--ax-warn)}
+@media(max-width:1200px){.promotion-layout{grid-template-columns:240px minmax(0,1fr);gap:20px}.promotion-heading{flex-direction:column}.promotion-field-grid{grid-template-columns:1fr}}
+@media(max-width:800px){.promotion-layout{grid-template-columns:minmax(0,1fr)}.promotion-directory{position:static}.promotion-code-list{max-height:230px}.promotion-field-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.promotion-heading,.promotion-section{padding:18px 16px}.promotion-save{padding:16px;align-items:stretch;flex-direction:column;gap:12px}.promotion-field-grid{grid-template-columns:1fr}.promotion-preview{padding:18px 16px}.promotion-preview-head{align-items:start}.promotion-checks li{flex-direction:column;gap:4px}.promotion-impact{flex-direction:column}.promotion-heading h2{font-size:17px!important}.promotion-options{flex-direction:column}.record-ref .tracking-link{overflow-wrap:anywhere;text-align:left}}

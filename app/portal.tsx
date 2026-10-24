@@ -2,6 +2,7 @@
 
 import React, {useEffect,useState,useRef,useCallback} from "react";
 import ProgramData from "./program-data";
+import PromotionSettings from "./promotion-settings";
 import {ArrowRight,ArrowUpRight,ChevronDown,ChevronLeft,ChevronRight,Check,CheckCircle2,Clock3,X,CircleHelp,Search,Download,UploadCloud,FileText,Users,Gift,CreditCard,Sun,Leaf,ShieldCheck,Plus,Mail,Phone,Menu,LogOut,TrendingUp,Wallet,Copy,ExternalLink,LoaderCircle,TriangleAlert,LayoutDashboard,Ban,FileSpreadsheet,UserCog,ListChecks,Receipt} from "lucide-react";
 import {money,rebateFields,referralFields,fieldKey,csv,parseCSV,type Row} from "../lib/program";
 import {stripBase,withBase} from "../lib/base-path";
@@ -9,7 +10,7 @@ import {api,dateLabel,download,Empty,Field,Modal,Pagination,Pill,statusLabel,Tit
 import {Dashboard,DecisionRules,InvoicePage,Invoices,Rebates} from "./decisioning";
 import {RebateDetail,ReviewQueue} from "./review";
 
-const adminPaths=["/customers","/payments","/fraud-review","/program-analytics","/home","/rebates","/pending-rebates","/approved-rebates","/declined-rebates","/referral-payments","/rebate-code-uploader","/referral-campaign-uploader","/referee-report","/referrer-report","/rebate-report","/users-list","/add-user","/invoices","/decision-rules"];
+const adminPaths=["/customers","/payments","/fraud-review","/program-analytics","/home","/rebates","/pending-rebates","/approved-rebates","/declined-rebates","/referral-payments","/rebate-code-uploader","/referral-campaign-uploader","/referee-report","/referrer-report","/rebate-report","/users-list","/add-user","/invoices","/decision-rules","/promotion-codes"];
 const adminPattern=/^\/(rebate|invoices)\/[^/]+$/;
 function Logo(){return <img className="logo-img" src={withBase("/axia-logo.png")} alt="Axia by Qcells" width={724} height={312}/>;}
 function VisaCard({small=false}:{small?:boolean}){
@@ -47,6 +48,7 @@ export default function Portal(){
   else if(path.startsWith("/rebate/"))content=<RebateDetail key={path} tracking={decodeURIComponent(path.slice(8))} data={data!} go={go} reload={reload} notify={notify} readOnly={readOnly}/>;
   else if(path==="/invoices")content=<Invoices data={data!} go={go} reload={reload} notify={notify} readOnly={readOnly}/>;
   else if(path.startsWith("/invoices/"))content=<InvoicePage key={path} number={decodeURIComponent(path.slice(10))} data={data!} go={go} reload={reload} notify={notify} readOnly={readOnly}/>;
+  else if(path==="/promotion-codes")content=<PromotionSettings key={query} data={data!} go={go} reload={reload} notify={notify} readOnly={readOnly}/>;
   else if(path==="/decision-rules")content=<DecisionRules data={data!} go={go} reload={reload} notify={notify} readOnly={readOnly}/>;
   else if(["/customers","/payments","/fraud-review","/program-analytics"].includes(path))content=<ProgramData key={path} path={path} data={data!} go={go} notify={notify}/>;
   else if(path==="/pending-rebates")content=<ReviewQueue key={query} data={data!} go={go} reload={reload} notify={notify} readOnly={readOnly}/>;
@@ -93,7 +95,7 @@ export default function Portal(){
 type NavItem={label:string,to:string,icon:React.ReactNode,count?:number,also?:string[]};
 const adminNav:(pending?:number)=>[string,NavItem[]][]=pending=>[
   ["Overview",[{label:"Dashboard",to:"/home",icon:<LayoutDashboard size={16}/>}]],
-  ["Decisions",[{label:"Review queue",to:"/pending-rebates",icon:<Clock3 size={16}/>,count:pending},{label:"All rebates",to:"/rebates",icon:<FileText size={16}/>},{label:"Approved",to:"/approved-rebates",icon:<CheckCircle2 size={16}/>},{label:"Declined",to:"/declined-rebates",icon:<Ban size={16}/>},{label:"Decision rules",to:"/decision-rules",icon:<ListChecks size={16}/>}]],
+  ["Decisions",[{label:"Review queue",to:"/pending-rebates",icon:<Clock3 size={16}/>,count:pending},{label:"All rebates",to:"/rebates",icon:<FileText size={16}/>},{label:"Approved",to:"/approved-rebates",icon:<CheckCircle2 size={16}/>},{label:"Declined",to:"/declined-rebates",icon:<Ban size={16}/>},{label:"Decision rules",to:"/decision-rules",icon:<ListChecks size={16}/>},{label:"Promotion settings",to:"/promotion-codes",icon:<Gift size={16}/>}]],
   ["Invoicing",[{label:"Invoices",to:"/invoices",icon:<Receipt size={16}/>}]],
   ["More",[{label:"Referral payments",to:"/referral-payments",icon:<Gift size={16}/>},{label:"Solar customers",to:"/customers",icon:<Sun size={16}/>},{label:"Payments & rewards",to:"/payments",icon:<Wallet size={16}/>},{label:"Fraud review",to:"/fraud-review",icon:<ShieldCheck size={16}/>},{label:"Analytics",to:"/program-analytics",icon:<TrendingUp size={16}/>},{label:"Rebate report",to:"/rebate-report",icon:<FileSpreadsheet size={16}/>},{label:"Referee report",to:"/referee-report",icon:<FileSpreadsheet size={16}/>},{label:"Referrer report",to:"/referrer-report",icon:<FileSpreadsheet size={16}/>},{label:"Rebate codes",to:"/rebate-code-uploader",icon:<UploadCloud size={16}/>},{label:"Referral campaigns",to:"/referral-campaign-uploader",icon:<UploadCloud size={16}/>},{label:"Administrators",to:"/users-list",icon:<UserCog size={16}/>,also:["/add-user"]}]],
 ];

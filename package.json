@@ -17,6 +17,7 @@
     "test:demo": "node --experimental-strip-types tests/demo-data.mjs",
     "test:scenarios": "node tests/demo-scenarios-e2e.mjs",
     "test:decisions": "node tests/decisions.mjs",
+    "test:promotions": "node tests/promotions.mjs",
     "build:demo": "vite build --config vite.demo.config.ts && node -e \"require('fs').copyFileSync('dist-demo/index.html','dist-demo/404.html')\"",
     "preview:demo": "vite preview --config vite.demo.config.ts --port 4173 --strictPort"
   },

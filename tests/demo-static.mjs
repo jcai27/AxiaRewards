@@ -47,6 +47,22 @@ try{
   await page.locator('.q-item.selected').nth(0).waitFor();
   pass('the review queue opens a rebate with its threshold checks');
 
+  await page.goto(base+'/promotion-codes?code=AXIA-PLUS-2026');
+  await page.getByRole('heading',{name:'Promotion settings',exact:true}).waitFor();
+  assert.equal(await page.getByRole('spinbutton',{name:'Submission deadline (days after PTO)'}).inputValue(),'60');
+  await page.getByRole('spinbutton',{name:'Submission deadline (days after PTO)'}).fill('30');
+  await page.locator('.promotion-preview').getByText('Filed within 30 days of PTO',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Save promotion',exact:true}).click();
+  await page.locator('.promotion-heading p').filter({hasText:'Revision 2'}).waitFor();
+  await page.reload();await page.getByRole('heading',{name:'Promotion settings',exact:true}).waitFor();
+  assert.equal(await page.getByRole('spinbutton',{name:'Submission deadline (days after PTO)'}).inputValue(),'30');
+  pass('per-promotion settings preview, save and persist in the browser demo');
+  await page.getByRole('button',{name:/^AXIA-FLEX-2026/}).click();
+  assert.equal(await page.getByRole('spinbutton',{name:'Submission deadline (days after PTO)'}).inputValue(),'180');
+  await page.getByRole('button',{name:/^AXIA-STORAGE-2026/}).click();
+  assert.equal(await page.getByRole('checkbox',{name:/Automatically approve qualifying rebates/}).isChecked(),false);
+  pass('demo promotion codes keep independent thresholds and approval modes');
+
   await page.goto(base+'/invoices');await page.getByRole('heading',{name:'Invoices',exact:true}).waitFor();
   await page.getByRole('button',{name:'Create invoice',exact:true}).click();
   await page.getByRole('heading',{name:'Invoice',exact:true}).waitFor();

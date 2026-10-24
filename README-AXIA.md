@@ -75,9 +75,27 @@ See `README.md` for the underlying Sites starter and hosting lifecycle.
 
 ## Browser-only demo (GitHub Pages)
 
-### Approval workspace and SOW evidence
+### Per-promotion eligibility demo
 
-The review queue uses a Permission to Operate decision-letter layout: 15 numbered conditions, evidence for each condition, an outcome, and confirmed Approve/Decline actions. Desktop queue rows and condition evidence scroll independently while the outcome and actions stay visible. J/K moves selection, reveals rows beyond the first 40, and starts the next record at its first condition. A completed decision advances to the next held rebate. On smaller screens, opening a queue item navigates to its full record.
+Open **Promotion settings** in the administrator navigation (`/promotion-codes`). Select any code to set its amount and sales dates, filing deadline after PTO, minimum installed system size, eligible states, financing options, required purchase/Creatio/serial evidence, and automatic versus manual approval. Threshold failures can hold for review or suggest decline. PTO, date consistency, duplicates, fraud holds and risk screening remain shared safeguards; nothing is declined automatically.
+
+Three fictional promotions and six linked pending claims demonstrate different outcomes:
+
+| Promotion | Amount | Deadline | Size / states | Approval |
+| --- | --- | --- | --- | --- |
+| AXIA-FLEX-2026 | $750 | 180 days | No size minimum; all states | Automatic when eligible |
+| AXIA-PLUS-2026 | $1,500 | 60 days | At least 6 kW; CA, AZ; cash or solar loan | Automatic when eligible |
+| AXIA-STORAGE-2026 | $2,000 | 30 days | At least 8 kW; CA, NY; cash or solar loan | Manual even when eligible |
+
+The flexible and plus examples include the same 5 kW/Texas purchase profile so the difference is visible. The premium offer illustrates a qualifying claim that still requires manual approval. These are illustrative program settings, not actual Axia offer terms.
+
+The editor previews pending claims with draft settings before saving. Save updates recommendations but does not approve the backlog or rewrite completed decisions. New decisions store the policy revision, terms and condition evidence that were used. Conflicting saves are rejected; CSV code imports preserve custom policies and advance the revision. View-only staff can inspect settings but cannot change them. Each browser retains its own edited settings in the GitHub Pages demo. Reset demo restores the fixtures.
+
+Run `npm run test:promotions` against the local development server for policy-engine and editor integration checks. The static demo suite also checks independent thresholds and persistence across reloads.
+
+### Approval record and integrations
+
+The review queue uses a Permission to Operate decision-letter layout: 17 numbered conditions, evidence for each condition, an outcome, and confirmed Approve/Decline actions. Desktop queue rows and condition evidence scroll independently while the outcome and actions stay visible. J/K moves selection, reveals rows beyond the first 40, and starts the next record at its first condition. A completed decision advances to the next held rebate. On smaller screens, opening a queue item navigates to its full record.
 
 Rules v2 adds proof of purchase, installation status from Creatio, campaign dates, and daily serial-file matching to the existing eligibility and integrity checks. These are **demo evidence fields**, not live integrations: new demo submissions simulate a signed-contract date, an installed Creatio result, and a matching serial record. Seeded records include deliberate gaps for review. No contract upload/validation service, live Creatio connection, or daily serial-file feed is configured. Campaign windows are illustrative. Do not use this demo to validate actual purchase or installation evidence.
 

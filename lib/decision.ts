@@ -1,13 +1,14 @@
 import type { Row } from "./program";
+import {policyFor,type PromotionPolicy} from "./promotion-policy";
 
 // Rebate decision engine. Pure and isomorphic: the browser uses it to show
 // recommendations, and the API re-runs it before applying any decision.
-export const ENGINE_VERSION = "rules-v2";
+export const ENGINE_VERSION = "rules-v3";
 
 export type CheckStatus = "pass" | "fail" | "warn";
 export type Recommendation = "APPROVE" | "DECLINE" | "REVIEW";
-export type Check = { id: string; label: string; status: CheckStatus; detail: string; declineReason?: string };
-export type Evaluation = { recommendation: Recommendation; checks: Check[]; declineReason?: string; summary: string; version: string };
+export type Check = { id: string; label: string; status: CheckStatus; detail: string; declineReason?: string; notRequired?:boolean };
+export type Evaluation = { recommendation: Recommendation; checks: Check[]; declineReason?: string; summary: string; version: string; promotion?:{code:string;revision:number;settings:PromotionPolicy;amount:number;start_date:string;end_date:string} };
 export type RuleGroup = "Project completion" | "Eligibility" | "Integrity";
 export type Rule = { id: string; group: RuleGroup; label: string; description: string; onFail: "Decline" | "Review" };
 
@@ -28,9 +29,11 @@ export const RULES: Rule[] = [
   { id: "campaign", group: "Eligibility", label: "Sale within campaign dates", description: "The date of sale falls between the rebate campaign's start and end dates.", onFail: "Decline" },
   { id: "code", group: "Eligibility", label: "Rebate code is active", description: "The submitted rebate code exists and is currently active.", onFail: "Decline" },
   { id: "amount", group: "Eligibility", label: "Amount matches code value", description: "The requested amount equals the value of the rebate code.", onFail: "Review" },
-  { id: "window", group: "Eligibility", label: `Filed within ${SUBMISSION_WINDOW_DAYS} days of PTO`, description: `The request was filed no more than ${SUBMISSION_WINDOW_DAYS} days after PTO.`, onFail: "Review" },
-  { id: "financier", group: "Eligibility", label: "Financing option is valid", description: `Financing is one of: ${VALID_FINANCIERS.join(", ")}.`, onFail: "Decline" },
+  { id: "window", group: "Eligibility", label: "Filed within promotion deadline", description: "The request meets the deadline set for its promotion code.", onFail: "Review" },
+  { id: "financier", group: "Eligibility", label: "Financing option is valid", description: "Financing is allowed by the promotion code settings.", onFail: "Decline" },
   { id: "certified", group: "Eligibility", label: "Form is certified", description: "The customer certified the submission and named the certifier.", onFail: "Review" },
+  { id: "system", group: "Eligibility", label: "System meets promotion minimum", description: "The installed system meets the minimum kW set for its promotion code.", onFail: "Review" },
+  { id: "state", group: "Eligibility", label: "State is eligible for promotion", description: "The installation is in a state allowed by its promotion code.", onFail: "Review" },
   { id: "serial", group: "Integrity", label: "Serial in daily serial file", description: "The module serial number appears in the daily serial file Axia sends to BPS.", onFail: "Review" },
   { id: "duplicate", group: "Integrity", label: "No duplicate claim", description: "No other non-declined claim shares this address and rebate code, invoice number, or module serial.", onFail: "Decline" },
   { id: "fraud", group: "Integrity", label: "No fraud hold", description: "The claim has no open fraud case or payment hold.", onFail: "Review" },
@@ -89,21 +92,23 @@ export function relatedClaims(r: Row, ctx: DecisionContext) {
 }
 
 export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
+  const code=ctx.codes.get(r.rebate_code),policy=policyFor(code);
   const checks: Check[] = [];
-  const add = (id: string, status: CheckStatus, detail: string, declineReason?: string) =>
-    checks.push({ id, label: ruleLabel(id), status, detail, ...(status === "fail" && declineReason ? { declineReason } : {}) });
+  const add = (id: string, status: CheckStatus, detail: string, declineReason?: string, label=ruleLabel(id),notRequired=false) =>
+    checks.push({ id, label, status, detail, ...(notRequired?{notRequired:true}:{}), ...(status === "fail" && declineReason ? { declineReason } : {}) });
 
-  if (r.proof_of_purchase) add("proof", "pass", `Signed installation contract dated ${r.proof_of_purchase}.`);
+  if(!policy.require_proof)add("proof","pass","Not required by this promotion.",undefined,ruleLabel("proof"),true);
+  else if (r.proof_of_purchase) add("proof", "pass", `Signed installation contract dated ${r.proof_of_purchase}.`);
   else add("proof", "warn", "No signed installation contract has been received.");
 
   const crm = String(r.crm_install_status || "");
   const crmSource = r.crm_source === "demo-simulated" ? " (simulated sync)" : "";
-  if (crm === "INSTALLED") add("crm", "pass", `Creatio reports Installed${r.crm_synced ? `, synced ${r.crm_synced}` : ""}${crmSource}.`);
+  if(!policy.require_crm)add("crm","pass","Not required by this promotion.",undefined,ruleLabel("crm"),true);
+  else if (crm === "INSTALLED") add("crm", "pass", `Creatio reports Installed${r.crm_synced ? `, synced ${r.crm_synced}` : ""}${crmSource}.`);
   else if (crm === "PENDING") add("crm", "warn", `Creatio reports installation pending${crmSource}.`);
   else if (crm === "NOT_FOUND") add("crm", "warn", "No matching project was found in Creatio.");
   else add("crm", "warn", "Installation status has not been received from Creatio.");
 
-  const code = ctx.codes.get(r.rebate_code);
   if (!code) add("code", "fail", `Code "${r.rebate_code}" is not a program rebate code.`, "Incorrect Rebate Code Selected");
   else if (!code.active) add("code", "fail", `Code "${r.rebate_code}" is inactive.`, "Incorrect Rebate Code Selected");
   else add("code", "pass", `${r.rebate_code} is active (${usd(code.rebate_amount)}).`);
@@ -136,17 +141,26 @@ export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
 
   if (r.pto_date && r.pto_date <= filed) {
     const gap = days(r.pto_date, filed);
-    add("window", gap > SUBMISSION_WINDOW_DAYS ? "warn" : "pass", `Submitted ${gap} day${gap === 1 ? "" : "s"} after PTO.`);
-  } else add("window", "warn", "Cannot measure the submission window without a valid PTO date.");
+    add("window",gap>policy.submission_window_days?(policy.late_submission_action==="DECLINE"?"fail":"warn"):"pass",`Submitted ${gap} day${gap===1?"":"s"} after PTO; ${r.rebate_code} allows ${policy.submission_window_days} days.`,"Submission outside promotion deadline",`Filed within ${policy.submission_window_days} days of PTO`);
+  } else add("window", "warn", "Cannot measure the submission window without a valid PTO date.",undefined,`Filed within ${policy.submission_window_days} days of PTO`);
 
-  const financier = VALID_FINANCIERS.find((f) => f.toLowerCase() === String(r.financier || "").toLowerCase());
+  const financier = policy.allowed_financiers.find((f) => f.toLowerCase() === String(r.financier || "").toLowerCase());
   if (!r.financier) add("financier", "warn", "No financing option recorded.");
-  else if (!financier) add("financier", "fail", `"${r.financier}" is not an accepted financing option.`, "Invalid financier option");
+  else if (!financier) add("financier",policy.eligibility_action==="DECLINE"?"fail":"warn",`"${r.financier}" is not accepted by ${r.rebate_code}; allowed: ${policy.allowed_financiers.join(", ")}.`, "Invalid financier option");
   else add("financier", "pass", financier);
 
   add("certified", r.certified_by ? "pass" : "warn", r.certified_by ? `Certified by ${r.certified_by}.` : "No certifier named.");
 
-  if (!r.module_serial) add("serial", "warn", "No module serial number recorded.");
+  const size=Number(r.system_size_kw),thresholdStatus=policy.eligibility_action==="DECLINE"?"fail":"warn";
+  if(!policy.min_system_size_kw)add("system","pass","No minimum system size for this promotion.",undefined,ruleLabel("system"),true);
+  else if(!Number.isFinite(size)||size<=0)add("system","warn",`System size is missing; ${r.rebate_code} requires at least ${policy.min_system_size_kw} kW.`);
+  else add("system",size>=policy.min_system_size_kw?"pass":thresholdStatus,`${size} kW installed; ${r.rebate_code} requires at least ${policy.min_system_size_kw} kW.`,"System below promotion minimum");
+  if(!policy.eligible_states.length)add("state","pass","All US states are eligible for this promotion.");
+  else if(!r.state)add("state","warn","Installation state is missing.");
+  else add("state",policy.eligible_states.includes(String(r.state).toUpperCase())?"pass":thresholdStatus,`${r.state}; ${r.rebate_code} allows ${policy.eligible_states.join(", ")}.`,"State not eligible for promotion");
+
+  if(!policy.require_serial)add("serial","pass","Not required by this promotion.",undefined,ruleLabel("serial"),true);
+  else if (!r.module_serial) add("serial", "warn", "No module serial number recorded.");
   else if (!ctx.serialFile.has(norm(r.module_serial))) add("serial", "warn", `${r.module_serial} is not in the daily serial file.`);
   else add("serial", "pass", `${r.module_serial} matched in the daily serial file.`);
 
@@ -181,7 +195,7 @@ export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
     : warns.length
       ? `Needs review: ${warns.map((w) => w.label.toLowerCase()).join("; ")}.`
       : "All checks passed.";
-  return { recommendation, checks, declineReason: fail?.declineReason, summary, version: ENGINE_VERSION };
+  return { recommendation, checks, declineReason: fail?.declineReason, summary, version: ENGINE_VERSION,...(code?{promotion:{code:code.rebate_code,revision:Number(code.policy_revision)||0,settings:policy,amount:Number(code.rebate_amount),start_date:code.start_date,end_date:code.end_date}}:{}) };
 }
 
 export const recommendationLabel: Record<Recommendation, string> = { APPROVE: "Meets all thresholds", DECLINE: "Suggest decline", REVIEW: "Needs review" };

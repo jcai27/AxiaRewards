@@ -24,6 +24,8 @@ Axia Rewards runs the Axia by Qcells solar rebate and referral program. Consumer
 
 ## Capabilities and Constraints
 
+- Promotion settings at `/promotion-codes` lets full-access staff create codes and edit individual amounts, campaign dates, filing windows, system-size thresholds, eligible states, allowed financing, required evidence and automatic approval. Draft settings preview pending claims. Saving updates eligibility recommendations; completed decisions retain recorded policy/check snapshots. Three fictional configurable offers and six example claims demonstrate this behavior in each browser.
+
 - React 19 client-rendered portal on Vinext/Cloudflare Workers with D1. Routing is a client-side `path` switch in `app/portal.tsx`. Styles are in `app/globals.css`.
 - Does not issue cards, move money, or connect to a payment processor. Status changes only update the program database.
 - Email delivery, support phone numbers, cardholder URL and legal copy are not configured. The UI must not imply they are.

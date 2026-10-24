@@ -20,3 +20,4 @@
 .demo-signin button{height:44px;border:0;border-radius:8px;background:#001c77;color:#fff;font:inherit;font-weight:500;cursor:pointer;margin-top:4px}
 .demo-signin button:hover{background:#00145a}
 .demo-signin a{margin-top:16px;text-align:center;color:#001c77;font-size:14px}
+.admin-app:has(.promotion-layout)~.demo-notice{position:static;margin:16px;max-width:none;justify-content:space-between;box-shadow:none;border-color:var(--ax-line-strong)}

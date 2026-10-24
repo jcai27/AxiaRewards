@@ -5,6 +5,8 @@ import { seedData, declineReasons, parseCSV, type Row } from "../../../lib/progr
 import { demoScenarios, demoVersion } from "../../../lib/demo-scenarios";
 import { decisionContext, evaluate, AUTO_APPROVER, ENGINE_VERSION, SUBMISSION_WINDOW_DAYS, type Evaluation } from "../../../lib/decision";
 import { invoiceable, invoiceLine, invoiceTotal, invoiceTransitions, INVOICE_FROM, INVOICE_TO, PAYMENT_TERMS_DAYS } from "../../../lib/invoice";
+import {policyFor,promotionSchema} from "../../../lib/promotion-policy";
+import {demoPromotions} from "../../../lib/demo-promotions";
 
 export const dynamic = "force-dynamic";
 const db = () => { if(!env.DB) throw new Error("Program database is not configured.");return env.DB; };
@@ -29,6 +31,12 @@ async function seed(){
   }
   await repairSeedForDecisions();
   await addSowEvidence();
+  if(!await setting("promotion_policies_demo_v1")){
+    const fixtures=demoPromotions(today());
+    const writes=Object.entries(fixtures).flatMap(([kind,list])=>list.map(r=>statement(kind,r,false)));
+    await db().batch(writes);
+    await db().prepare("INSERT OR IGNORE INTO settings (key,value) VALUES ('promotion_policies_demo_v1','complete')").run();
+  }
 }
 const withoutInvoice=(r:Row)=>{const next={...r};delete next.program_invoice_id;delete next.program_invoice_number;return next;};
 const addDays=(d:string,n:number)=>new Date(Date.parse(d)+n*86400000).toISOString().slice(0,10);
@@ -92,7 +100,7 @@ async function autoApprove(ids?:string[]){
   const tally={approved:0,review:0,decline:0};
   const updates=pending.flatMap(r=>{
     const ev=run(r);
-    if(ev.recommendation!=="APPROVE"||r.payment_hold){tally[ev.recommendation==="DECLINE"?"decline":"review"]++;return [];}
+    if(ev.recommendation!=="APPROVE"||r.payment_hold||!ev.promotion?.settings.auto_approve){tally[ev.recommendation==="DECLINE"?"decline":"review"]++;return [];}
     const next={...r,status:"APPROVED",date_approved_declined:today(),approved_declined_by:AUTO_APPROVER,decline_reason:"",decision:decisionRecord(ev,"auto","APPROVED",AUTO_APPROVER)};
     return [db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(next),r.id,JSON.stringify(r))];
   });
@@ -103,6 +111,8 @@ const decisionRecord=(ev:Evaluation,source:"auto"|"engine"|"manual",final:string
   engine_version:ev.version,recommendation:ev.recommendation,source,decided_by:actor,decided_at:new Date().toISOString(),
   agreed:ev.recommendation==="REVIEW"?null:(ev.recommendation==="APPROVE")===(final==="APPROVED"),
   failed:ev.checks.filter(c=>c.status==="fail").map(c=>c.id),warned:ev.checks.filter(c=>c.status==="warn").map(c=>c.id),
+  promotion_policy:ev.promotion,
+  checks:ev.checks,
 });
 async function admin(write=false){
   const user=await getChatGPTUser();if(!user)throw fail("Sign in to access the administrator module.",401);
@@ -183,6 +193,22 @@ export async function POST(request:Request){try{
     membership.user_id=user.userId;membership.date_added=today();await db().batch([statement("users",membership),db().prepare("DELETE FROM records WHERE id=? AND kind='invitations'").bind(invite.id)]);return ok({accepted:true});
   }
   const actor=await admin(true);
+  if(action==="save-promotion"){
+    const input=promotionSchema.parse(body.data);
+    const expected=z.number().int().nonnegative().parse(body.expected_revision);
+    const prior=body.id?await row(z.string().parse(body.id),"codes"):undefined;
+    if(body.id&&!prior)throw fail("Promotion not found. Refresh the list.",404);
+    if(prior&&prior.rebate_code!==input.rebate_code)throw fail("A saved promotion code cannot be renamed. Create a new promotion instead.");
+    if((await rows("codes")).some(c=>c.rebate_code.toLowerCase()===input.rebate_code.toLowerCase()&&c.id!==prior?.id))throw fail("This promotion code already exists.",409);
+    if((Number(prior?.policy_revision)||0)!==expected)throw fail("This promotion was changed by another administrator. Reload its settings before saving.",409);
+    const next={...prior,...input,id:prior?.id||`promotion-code-${input.rebate_code.toLowerCase()}`,policy_revision:expected+1,policy_updated_at:new Date().toISOString(),policy_updated_by:actor.name};
+    if(prior){
+      const saved=await db().prepare("UPDATE records SET data=? WHERE id=? AND kind='codes' AND data=?").bind(JSON.stringify(next),prior.id,JSON.stringify(prior)).run();
+      if(!saved.meta.changes)throw fail("This promotion changed while saving. Reload its settings.",409);
+    }else{const saved=await statement("codes",next,false).run();if(!saved.meta.changes)throw fail("This promotion code was just created by another administrator. Refresh the list.",409);}
+    await log(actor.email,`Saved promotion ${input.rebate_code} revision ${next.policy_revision}: ${JSON.stringify({before:prior?{...prior,policy:policyFor(prior)}:null,after:next})}`);
+    return ok({promotion:next},prior?200:201);
+  }
   if(action==="review"){
     const ids=z.array(z.string()).min(1).max(100).parse(body.ids);const status=z.enum(["APPROVED","DECLINED"]).parse(body.status);
     if(new Set(ids).size!==ids.length)throw fail("Select distinct requests.");
@@ -272,7 +298,7 @@ export async function POST(request:Request){try{
     if(parsed.length>1000)throw fail("Upload at most 1,000 rows at a time.");
     const key=kind==="codes"?"rebate_code":"campaign_name",amountKey=kind==="codes"?"rebate_amount":"amount";
     const existing=await rows(kind);const seen=new Set<string>();
-    const records=parsed.map((r,i)=>{if(!r[key]||r[key].length>100||!r[amountKey]||!Number.isFinite(Number(r[amountKey]))||Number(r[amountKey])<=0||Number(r[amountKey])>100000)throw fail(`Row ${i+2}: include a ${key} and a valid positive ${amountKey}.`);if(seen.has(r[key]))throw fail(`Row ${i+2}: duplicate ${key}.`);seen.add(r[key]);if(r.active&&!/^(true|false|1|0|yes|no)$/i.test(r.active))throw fail(`Row ${i+2}: active must be true or false.`);const prior=existing.find(x=>x[key]===r[key]);const dates=kind==='codes'?{start_date:r.start_date||prior?.start_date||'',end_date:r.end_date||prior?.end_date||''}:{};if(kind==='codes'&&((dates.start_date&&!date.safeParse(dates.start_date).success)||(dates.end_date&&!date.safeParse(dates.end_date).success)||(dates.start_date&&dates.end_date&&dates.start_date>dates.end_date)))throw fail(`Row ${i+2}: start_date and end_date must be YYYY-MM-DD with the start on or before the end.`);return {id:prior?.id||crypto.randomUUID(),[key]:r[key],[amountKey]:Number(Number(r[amountKey]).toFixed(2)),active:!r.active||/^(true|1|yes)$/i.test(r.active),...dates};});
+    const records=parsed.map((r,i)=>{if(!r[key]||r[key].length>100||!r[amountKey]||!Number.isFinite(Number(r[amountKey]))||Number(r[amountKey])<=0||Number(r[amountKey])>100000)throw fail(`Row ${i+2}: include a ${key} and a valid positive ${amountKey}.`);if(seen.has(r[key]))throw fail(`Row ${i+2}: duplicate ${key}.`);seen.add(r[key]);if(r.active&&!/^(true|false|1|0|yes|no)$/i.test(r.active))throw fail(`Row ${i+2}: active must be true or false.`);const prior=existing.find(x=>x[key]===r[key]);const dates=kind==='codes'?{start_date:r.start_date||prior?.start_date||'',end_date:r.end_date||prior?.end_date||''}:{};if(kind==='codes'&&((dates.start_date&&!date.safeParse(dates.start_date).success)||(dates.end_date&&!date.safeParse(dates.end_date).success)||(dates.start_date&&dates.end_date&&dates.start_date>dates.end_date)))throw fail(`Row ${i+2}: start_date and end_date must be YYYY-MM-DD with the start on or before the end.`);return {...prior,id:prior?.id||crypto.randomUUID(),[key]:r[key],[amountKey]:Number(Number(r[amountKey]).toFixed(2)),active:!r.active||/^(true|1|yes)$/i.test(r.active),...dates,...(kind==="codes"?{policy_revision:(Number(prior?.policy_revision)||0)+1,policy_updated_at:new Date().toISOString(),policy_updated_by:actor.name}:{})};});
     for(let i=0;i<records.length;i+=80)await db().batch(records.slice(i,i+80).map(r=>statement(kind,r)));await log(actor.email,`Imported ${records.length} ${kind}`);return ok({count:records.length});
   }
   if(action==="save-user"){

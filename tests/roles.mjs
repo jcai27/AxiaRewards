@@ -11,7 +11,7 @@ await request({...viewer,'oai-authenticated-user-email':'wrong@example.com'},{ac
 await request(viewer,{action:'accept-invite',token});
 await request(viewer,{action:'accept-invite',token},400);
 const data=await request(viewer);assert.equal(data.currentUser.role,'Client View Only');
-for(const body of [{action:'review',ids:['rebate-52'],status:'APPROVED'},{action:'upload',kind:'codes',csv:'rebate_code,rebate_amount\nNOT-ALLOWED,50'},{action:'save-user',data:{}},{action:'update-referral',id:'referral-2',status:'DISQUALIFIED'},{action:'resend-invite',id:invite.user.id}])await request(viewer,body,403);
+for(const body of [{action:'review',ids:['rebate-52'],status:'APPROVED'},{action:'upload',kind:'codes',csv:'rebate_code,rebate_amount\nNOT-ALLOWED,50'},{action:'save-user',data:{}},{action:'save-promotion',expected_revision:0,data:{}},{action:'update-referral',id:'referral-2',status:'DISQUALIFIED'},{action:'resend-invite',id:invite.user.id}])await request(viewer,body,403);
 await request(owner,{action:'save-user',id:invite.user.id,data:{name:'View Only Test',email:viewer['oai-authenticated-user-email'],role:'Client View Only',status:'Inactive',dealer_name:'Axia By QCells'}});
 await request(viewer,undefined,403);
-console.log('PASS invitation email binding, one-time acceptance, view-only reads, five write restrictions, and inactive account rejection.');
+console.log('PASS invitation email binding, one-time acceptance, view-only reads, six write restrictions, and inactive account rejection.');

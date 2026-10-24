@@ -34,7 +34,7 @@ const firstFinding=(ev:Evaluation)=>ev.checks.find(c=>c.status==="fail")||ev.che
 export function AutomationControl({data,reload,notify,readOnly}:Omit<PageProps,"go">){
   const {get}=useDecisions(data);
   const automation=data.automation||{enabled:true};
-  const ready=data.rebates.filter((r:Row)=>r.status==="PENDING"&&!r.payment_hold&&get(r).recommendation==="APPROVE").length;
+  const ready=data.rebates.filter((r:Row)=>r.status==="PENDING"&&!r.payment_hold&&get(r).recommendation==="APPROVE"&&get(r).promotion?.settings.auto_approve).length;
   const [confirm,setConfirm]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
   async function toggle(){setBusy(true);try{await api({action:"set-automation",enabled:!automation.enabled});notify(`Automatic approval ${automation.enabled?"paused":"turned on"}.`);await reload();}catch(e){notify((e as Error).message);}finally{setBusy(false);}}
   async function run(){setBusy(true);setError("");try{const r=await api({action:"run-engine"});setConfirm(false);notify(`${r.approved} rebate${r.approved===1?"":"s"} approved automatically. ${r.review+r.decline} held for review.`);await reload();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
@@ -189,12 +189,12 @@ export function DecisionRules({data,go,reload,notify,readOnly}:PageProps){
   for(const r of pending)for(const c of get(r).checks)if(c.status!=="pass"){const h=hits.get(c.id)||{fail:0,warn:0};h[c.status]++;hits.set(c.id,h);}
   const groups=[...new Set(RULES.map(x=>x.group))];
   return <>
-    <Title title="Decision rules" sub={`A rebate is approved automatically only when it meets every threshold below. Engine version ${data.automation?.engine_version||""}.`}/>
+    <Title title="Decision rules" sub={`A rebate is approved automatically only when it meets every threshold below. Engine version ${data.automation?.engine_version||""}.`}><button className="button secondary" onClick={()=>go("/promotion-codes")}>Promotion settings <ChevronRight size={15}/></button></Title>
     <AutomationControl data={data} reload={reload} notify={notify} readOnly={readOnly}/>
     {groups.map(g=><section className="panel rules-panel" key={g}><div className="panel-heading"><h3>{g}</h3></div><div className="table-scroll"><table><thead><tr><th className="num">No.</th><th>Condition</th><th>What it checks</th><th>If not met</th><th className="num">Pending rebates held</th></tr></thead><tbody>
-      {RULES.filter(x=>x.group===g).map(rule=>{const h=hits.get(rule.id);const n=(h?.fail||0)+(h?.warn||0);return <tr key={rule.id}><td className="num">{RULES.indexOf(rule)+1}</td><td><b>{rule.label}</b></td><td className="wrap">{rule.description}</td><td><span className={`pill ${rule.onFail==="Decline"?"declined":"medium"}`}>{rule.onFail==="Decline"?"Hold, suggest decline":"Hold for review"}</span></td><td className="num">{n?<button className="tracking-link" onClick={()=>go(`/pending-rebates?rule=${rule.id}`)}>{n.toLocaleString()}</button>:"0"}</td></tr>;})}
+      {RULES.filter(x=>x.group===g).map(rule=>{const h=hits.get(rule.id);const n=(h?.fail||0)+(h?.warn||0);return <tr key={rule.id}><td className="num">{RULES.indexOf(rule)+1}</td><td><b>{rule.label}</b></td><td className="wrap">{rule.description}</td><td>{["window","system","state","financier","proof","crm","serial"].includes(rule.id)?<button className="tracking-link" onClick={()=>go("/promotion-codes")}>Per promotion</button>:<span className={`pill ${rule.onFail==="Decline"?"declined":"medium"}`}>{rule.onFail==="Decline"?"Hold, suggest decline":"Hold for review"}</span>}</td><td className="num">{n?<button className="tracking-link" onClick={()=>go(`/pending-rebates?rule=${rule.id}`)}>{n.toLocaleString()}</button>:"0"}</td></tr>;})}
     </tbody></table></div></section>)}
-    <p className="form-note">Rules are defined in code (lib/decision.ts). Nothing is declined automatically: a failed threshold holds the rebate in the review queue with a suggested outcome.</p>
+    <p className="form-note">Deadlines, minimum system size, eligible states, financing and required evidence are configured per promotion code in Promotion settings. Shared integrity checks always apply. Nothing is declined automatically.</p>
   </>;
 }
 
