@@ -8,12 +8,12 @@ web
 
 ## Users
 
-- **Primary: program operations staff.** They spend most of the working day in the administrator module: reviewing and approving or declining pending rebates in bulk, managing referral payment status, checking fraud holds, uploading rebate codes and campaigns, exporting CSV reports, and managing administrator accounts.
+- **Primary: program operations staff.** They spend most of the working day in the administrator module, which is now centred on automated rebate decisions: they monitor the decision engine, work the review queue of rebates it held, open each rebate to analyse its data and threshold checks, decide exceptions, and bill the funder for approved rebates with program invoices. Referral payments, uploads, reports and administrator management are secondary.
 - **Secondary: consumers.** Solar customers who bought qualifying Axia by Qcells products. They redeem a rebate, track payment status by a 10-digit tracking number, and find card and FAQ information on the public site.
 
 ## Product Purpose
 
-Axia Rewards runs the Axia by Qcells solar rebate and referral program. Consumers submit and track rebate requests. Administrators review those requests, manage referral rewards, and report on the program. It succeeds when staff can move a high volume of requests through review accurately and quickly, and consumers can claim and track rewards without contacting support.
+Axia Rewards runs the Axia by Qcells solar rebate and referral program. Consumers submit and track rebate requests. A rules engine (lib/decision.ts) approves a rebate automatically the moment it meets every threshold, chiefly that the solar project is complete (installed, with utility Permission to Operate), plus eligibility and integrity checks; anything else is held for a person with a suggested outcome, and nothing is declined automatically. Approved rebates are billed to the program funder on program invoices. It succeeds when most rebates decide themselves correctly, staff can see why every rebate was approved or held, and consumers can claim and track rewards without contacting support.
 
 ## Operating Context
 
@@ -31,8 +31,10 @@ Axia Rewards runs the Axia by Qcells solar rebate and referral program. Consumer
 
 ## Brand Commitments
 
-- "axia® by Qcells" wordmark must be kept.
-- The illustrative CSS-rendered Visa card must be kept (fictional card details).
+- The Axia by Qcells logo (public/axia-logo.png, from axiasolarusa.com) must be kept, and the product should sit comfortably next to axiasolarusa.com.
+- Palette and type are fixed by the user: Axia navy #001C77, Axia teal #00C6C1, black on white, light gray #F2F2F2, cream #F2F0EA, Poppins.
+- Fixed by the user: the admin keeps a left sidebar; the consumer home keeps the solar photo hero; the illustrative CSS-rendered Visa card stays (fictional card details).
+- The user rejects: generic SaaS looks, playful or decorative treatment, cramped density, and anything off-brand from axiasolarusa.com.
 - Footer attribution: "Powered by Best Payment Solutions".
 - Admin copy should be plain and functional. The warm "sunny" tone is not binding in the admin module.
 
@@ -43,7 +45,7 @@ Axia Rewards runs the Axia by Qcells solar rebate and referral program. Consumer
 
 ## Product Principles
 
-1. Throughput first in the admin module. Review, filter, select and export are always the shortest path.
+1. Throughput first in the admin module. Review, filter, select and export are always the shortest path, and every automated decision is explainable from the rebate's own data.
 2. Status must be unambiguous. Every record's state, risk and next action can be read at a glance.
 3. Never overstate what the system does: no implied payments, deliveries or notifications that aren't real.
 4. Consumers get clarity and reassurance. Staff get density and precision.

@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Departures Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}body{width:1440px;height:900px;overflow:hidden;font:14px/1.45 Poppins,sans-serif;color:#0F1115;background:#F2F2F2;display:grid;grid-template-columns:232px 1fr}
+.side{background:#fff;border-right:1px solid #C8CBD3;padding:20px 14px;display:flex;flex-direction:column;gap:4px}
+.logo{font-size:30px;font-weight:600;letter-spacing:-1px;color:#001C77;margin:0 8px 18px}
+.nl{font-size:11px;font-weight:600;letter-spacing:.08em;color:#5B6070;margin:14px 10px 4px}
+.ni{padding:8px 10px;border-radius:8px;display:flex;justify-content:space-between}.ni.on{background:#001C77;color:#fff;font-weight:500}.ni em{font-style:normal;background:#00C6C1;color:#001C77;border-radius:6px;padding:0 7px;font-weight:600}
+main{padding:22px 28px;display:flex;flex-direction:column;gap:16px}
+.top{display:flex;justify-content:space-between;align-items:end}h1{font-size:24px;font-weight:500}.sub{color:#5B6070}
+.live{display:flex;gap:8px;align-items:center;font-weight:500}.live i{width:10px;height:10px;border-radius:50%;background:#00C6C1}
+.board{background:#fff;border:1px solid #9AA0AD;border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th{background:#001C77;color:#fff;font-size:12.5px;font-weight:500;text-align:left;padding:10px 16px}
+td{padding:11px 16px;border-bottom:1px solid #DFE1E6}td.r,th.r{text-align:right}
+tr.new td{background:#DCF7F6}tr.new td:first-child{box-shadow:inset 4px 0 #00C6C1}tr.sel td{background:#E8ECF8;font-weight:500}
+.new-tag{font-size:11px;font-weight:600;color:#001C77;background:#00C6C1;border-radius:4px;padding:1px 6px;margin-left:6px}
+.tag{font-size:12px;font-weight:500;border-radius:5px;padding:2px 7px}.d{background:#FBE9E7;color:#AE2216}.w{background:#FBEFD4;color:#7F4D00}
+.pass{background:#fff;border:1px solid #9AA0AD;border-radius:12px;display:grid;grid-template-columns:1.2fr repeat(3,1fr) 240px;overflow:hidden}
+.seg{padding:14px 18px;border-right:1px dashed #9AA0AD}.seg small{display:block;color:#5B6070;font-size:12px;margin-bottom:4px}.seg b{font-weight:500}.seg p{font-size:13px;color:#3D4250}
+.ok{color:#0A6E5C}.no{color:#AE2216;font-weight:500}
+.acts{padding:14px 18px;display:flex;flex-direction:column;gap:8px;justify-content:center}.btn{text-align:center;padding:10px;border-radius:8px;font-weight:500}.p{background:#001C77;color:#fff}.s{border:1px solid #9AA0AD;color:#AE2216}
+</style></head><body>
+<aside class="side"><div class="logo">axia</div><div class="ni">Dashboard</div><div class="nl">DECISIONS</div><div class="ni on">Review queue <em>24</em></div><div class="ni">All rebates</div><div class="ni">Approved</div><div class="ni">Declined</div><div class="ni">Decision rules</div><div class="nl">INVOICING</div><div class="ni">Weekly invoices</div></aside>
+<main>
+<div class="top"><div><h1>Review queue</h1><div class="sub">Held rebates, longest waiting first · 3 new since you last looked</div></div><div class="live"><i></i>Engine running · last decision 2 min ago</div></div>
+<section class="board"><table><tr><th>Waiting</th><th>Rebate</th><th>Customer</th><th>Held because</th><th>Suggests</th><th class="r">Amount</th><th>Campaign</th></tr>
+<tr class="new"><td>12 min<span class="new-tag">NEW</span></td><td>1000000512</td><td>Sofia Kim</td><td>Install not verified in Creatio</td><td><span class="tag w">Review</span></td><td class="r">$1,500.00</td><td>AxiaSummer2026</td></tr>
+<tr class="new"><td>40 min<span class="new-tag">NEW</span></td><td>1000000498</td><td>Henry Clark</td><td>Serial not in daily file</td><td><span class="tag w">Review</span></td><td class="r">$750.00</td><td>6-moSpring</td></tr>
+<tr class="sel"><td>4 days</td><td>1000000215</td><td>Daniel Jackson</td><td>Duplicate address and code</td><td><span class="tag d">Decline</span></td><td class="r">$750.00</td><td>6-moSpring</td></tr>
+<tr><td>5 days</td><td>1000000323</td><td>Liam Harris</td><td>Filed 202 days after PTO</td><td><span class="tag w">Review</span></td><td class="r">$1,500.00</td><td>AxiaSummer2026</td></tr>
+<tr><td>6 days</td><td>6100000001</td><td>Gabriel Torres</td><td>Open fraud case</td><td><span class="tag w">Review</span></td><td class="r">$500.00</td><td>AxiaLoyalty2025</td></tr>
+<tr><td>8 days</td><td>1000000296</td><td>Aria Wilson</td><td>Code not in an active campaign</td><td><span class="tag d">Decline</span></td><td class="r">$750.00</td><td>AxiaWinter2025</td></tr>
+<tr><td>9 days</td><td>1000000431</td><td>Ethan Park</td><td>Proof of purchase missing</td><td><span class="tag w">Review</span></td><td class="r">$750.00</td><td>6-moSpring</td></tr>
+</table></section>
+<section class="pass"><div class="seg"><small>Rebate</small><b>1000000215 · Daniel Jackson</b><p>846 Maple Lane, Sacramento CA · $750.00</p></div>
+<div class="seg"><small>Project completion</small><p class="ok">✓ Contract on file</p><p class="ok">✓ Installed (Creatio)</p><p class="ok">✓ PTO Oct 9</p></div>
+<div class="seg"><small>Eligibility</small><p class="ok">✓ In campaign dates</p><p class="ok">✓ Code and amount</p><p class="ok">✓ Serial matched</p></div>
+<div class="seg"><small>Integrity</small><p class="no">✕ Duplicate of 1000000746</p><p class="ok">✓ No fraud hold</p></div>
+<div class="acts"><span class="btn s">Decline · duplicate</span><span class="btn p">Approve anyway</span></div></section>
+</main></body></html>

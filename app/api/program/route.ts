@@ -28,6 +28,7 @@ async function seed(){
     await db().prepare("INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)").bind(demoVersion,summary).run();
   }
   await repairSeedForDecisions();
+  await addSowEvidence();
 }
 const withoutInvoice=(r:Row)=>{const next={...r};delete next.program_invoice_id;delete next.program_invoice_number;return next;};
 const addDays=(d:string,n:number)=>new Date(Date.parse(d)+n*86400000).toISOString().slice(0,10);
@@ -54,7 +55,33 @@ async function repairSeedForDecisions(){
   for(let i=0;i<updates.length;i+=80)await db().batch(updates.slice(i,i+80));
   await db().prepare("INSERT OR IGNORE INTO settings (key,value) VALUES ('decision_demo_v1',?)").bind(String(updates.length)).run();
 }
-async function engine(){const [rebates,codes,customers]=await Promise.all([rows("rebates"),rows("codes"),rows("customers")]);const ctx=decisionContext({rebates,codes,customers},today());return {rebates,run:(r:Row)=>evaluate(r,ctx)};}
+// Campaign windows for the demo codes (the SOW's rebate code template carries start and end dates).
+const CAMPAIGN_DATES:Record<string,[string,string]>={"6-moSpring":["2025-12-01","2026-09-30"],"AxiaSummer2026":["2025-12-01","2026-12-31"],"AxiaFall2026":["2026-01-01","2026-12-31"],"AxiaStorage2026":["2026-01-01","2026-12-31"],"AxiaLoyalty2025":["2025-01-01","2025-12-31"]};
+const serialFor=(id:string)=>{let h=0;for(const ch of id)h=(h*31+ch.charCodeAt(0))>>>0;return `AX-Q440-${String(100000+h%900000)}`;};
+const serialRecord=(serial:string,date:string)=>({id:`serial-${serial}`,serial,file_date:date});
+// One-time: give every existing rebate the SOW evidence (proof of purchase, Creatio status,
+// module serial and serial file entry), with a deliberate mix of gaps on synthetic pending claims.
+async function addSowEvidence(){
+  if(await setting("sow_evidence_v1"))return;
+  const [all,codes]=await Promise.all([rows("rebates"),rows("codes")]);
+  const writes=codes.filter(code=>CAMPAIGN_DATES[code.rebate_code]&&!code.start_date).map(code=>{const [start_date,end_date]=CAMPAIGN_DATES[code.rebate_code];return db().prepare("UPDATE records SET data=? WHERE id=? AND kind='codes' AND data=?").bind(JSON.stringify({...code,start_date,end_date}),code.id,JSON.stringify(code));});
+  const serials=new Map<string,string>();
+  for(const r of all){
+    const seedIndex=/^rebate-\d+$/.test(r.id)&&r.status==="PENDING"?Number(r.id.slice(7))-1:-1,gap=(n:number)=>seedIndex>=0&&seedIndex%n===0;
+    const next:Row={...r};
+    next.module_serial=r.module_serial||serialFor(r.id);
+    next.proof_of_purchase=r.proof_of_purchase??(gap(23)?null:r.date_of_sale||null);
+    next.crm_install_status=r.crm_install_status||(r.status==="REBATE_REGISTRATION"||gap(19)?"PENDING":"INSTALLED");
+    next.crm_synced=r.crm_synced||r.installation_complete_date||r.date_submitted;
+    if(gap(53)){const window=CAMPAIGN_DATES[r.rebate_code];if(window){next.date_of_sale=addDays(window[0],-20);next.pto_date=next.pto_date&&next.pto_date<next.date_of_sale?addDays(next.date_of_sale,30):next.pto_date;}}
+    if(!gap(47))serials.set(next.module_serial,next.date_submitted||today());
+    writes.push(db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(next),r.id,JSON.stringify(r)));
+  }
+  for(const [serial,date] of serials)writes.push(statement("serials",serialRecord(serial,date),false));
+  for(let i=0;i<writes.length;i+=80)await db().batch(writes.slice(i,i+80));
+  await putSetting("sow_evidence_v1",String(all.length));
+}
+async function engine(){const [rebates,codes,customers,serials]=await Promise.all([rows("rebates"),rows("codes"),rows("customers"),rows("serials")]);const ctx=decisionContext({rebates,codes,customers,serial_file:serials.map(s=>s.serial)},today());return {rebates,run:(r:Row)=>evaluate(r,ctx)};}
 const setting=async(key:string)=>(await db().prepare("SELECT value FROM settings WHERE key=?").bind(key).first<{value:string}>())?.value;
 const putSetting=(key:string,value:string)=>db().prepare("INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key,value).run();
 const automationEnabled=async()=>(await setting("auto_approve"))!=="off";
@@ -111,7 +138,8 @@ export async function GET(request:Request){try{
   const currentUser=await admin();const [rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs,invoices]=await Promise.all([rows("rebates"),rows("referrals"),rows("users"),rows("codes"),rows("campaigns"),rows("customers"),rows("payments"),rows("rewards"),rows("fraud"),rows("report_runs"),rows("invoices")]);
   const lastRun=await setting("engine_last_run");
   const automation={enabled:await automationEnabled(),engine_version:ENGINE_VERSION,last_run:lastRun?JSON.parse(lastRun):null};
-  return ok({rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs,invoices,automation,currentUser,today:today()});
+  const serial_file=(await rows("serials")).map(s=>s.serial);
+  return ok({rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs,invoices,serial_file,automation,currentUser,today:today()});
 }catch(e){return handle(e);}}
 export async function POST(request:Request){try{
   const origin=request.headers.get("origin");if(origin&&origin!==new URL(request.url).origin)throw fail("Request origin is not allowed.",403);
@@ -125,8 +153,8 @@ export async function POST(request:Request){try{
     const code=(await rows("codes")).find(c=>c.rebate_code===input.rebate_code&&c.active);if(!code)throw fail("This rebate code is not active. Contact your sales representative.");
     const duplicate=await db().prepare("SELECT data FROM records WHERE kind='rebates' AND lower(json_extract(data,'$.email'))=? AND json_extract(data,'$.rebate_code')=? AND json_extract(data,'$.date_of_sale')=?").bind(input.email.toLowerCase(),input.rebate_code,input.date_of_sale).first<{data:string}>();
     if(duplicate)throw fail("A request already exists for this purchase. Use Track Payment or contact support.",409);
-    const r={...input,id:crypto.randomUUID(),tracking_number:await uniqueTracking(),status:input.preinstallation?"REBATE_REGISTRATION":"PENDING",rebate_amount:Number(code.rebate_amount),date_submitted:today()};
-    const saved=await statement("rebates",r,false).run();if(!saved.meta.changes)throw fail("A request for this purchase was just submitted. Please track your existing request.",409);await log(input.email,`Submitted rebate ${r.id}`);
+    const r={...input,id:crypto.randomUUID(),tracking_number:await uniqueTracking(),status:input.preinstallation?"REBATE_REGISTRATION":"PENDING",rebate_amount:Number(code.rebate_amount),date_submitted:today(),module_serial:"",proof_of_purchase:input.date_of_sale,crm_install_status:input.preinstallation?"PENDING":"INSTALLED",crm_synced:today(),crm_source:"demo-simulated"};r.module_serial=serialFor(r.id);
+    const saved=await statement("rebates",r,false).run();if(saved.meta.changes)await statement("serials",serialRecord(r.module_serial,today()),false).run();if(!saved.meta.changes)throw fail("A request for this purchase was just submitted. Please track your existing request.",409);await log(input.email,`Submitted rebate ${r.id}`);
     const approved=r.status==="PENDING"&&await automationEnabled()&&(await autoApprove([r.id])).approved>0;
     return ok({tracking_number:r.tracking_number,status:approved?"APPROVED":r.status},201);
   }
@@ -139,7 +167,7 @@ export async function POST(request:Request){try{
     if(found.kind!=="rebates"||r.status!=="REBATE_REGISTRATION")throw fail("This request is not awaiting installation. Track your payment for the latest status.");
     if(email.parse(body.email).toLowerCase()!==r.email.toLowerCase())throw fail("The email does not match this registration.",403);
     const pto=date.parse(body.pto_date);if(pto>today()||pto<r.date_of_sale)throw fail("Enter a valid PTO date on or after your date of sale.");
-    const old=JSON.stringify(r);r.pto_date=pto;r.status="PENDING";r.installation_complete_date=today();const updated=await db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(r),r.id,old).run();if(!updated.meta.changes)throw fail("This request changed while you were editing. Check its latest status.",409);await log(r.email,`Finalized rebate ${r.id}`);
+    const old=JSON.stringify(r);r.pto_date=pto;r.status="PENDING";r.installation_complete_date=today();if(r.crm_source==="demo-simulated"){r.crm_install_status="INSTALLED";r.crm_synced=today();}const updated=await db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(r),r.id,old).run();if(!updated.meta.changes)throw fail("This request changed while you were editing. Check its latest status.",409);await log(r.email,`Finalized rebate ${r.id}`);
     const approved=await automationEnabled()&&(await autoApprove([r.id])).approved>0;
     return ok({tracking_number:r.tracking_number,status:approved?"APPROVED":r.status});
   }
@@ -244,7 +272,7 @@ export async function POST(request:Request){try{
     if(parsed.length>1000)throw fail("Upload at most 1,000 rows at a time.");
     const key=kind==="codes"?"rebate_code":"campaign_name",amountKey=kind==="codes"?"rebate_amount":"amount";
     const existing=await rows(kind);const seen=new Set<string>();
-    const records=parsed.map((r,i)=>{if(!r[key]||r[key].length>100||!r[amountKey]||!Number.isFinite(Number(r[amountKey]))||Number(r[amountKey])<=0||Number(r[amountKey])>100000)throw fail(`Row ${i+2}: include a ${key} and a valid positive ${amountKey}.`);if(seen.has(r[key]))throw fail(`Row ${i+2}: duplicate ${key}.`);seen.add(r[key]);if(r.active&&!/^(true|false|1|0|yes|no)$/i.test(r.active))throw fail(`Row ${i+2}: active must be true or false.`);return {id:existing.find(x=>x[key]===r[key])?.id||crypto.randomUUID(),[key]:r[key],[amountKey]:Number(Number(r[amountKey]).toFixed(2)),active:!r.active||/^(true|1|yes)$/i.test(r.active)};});
+    const records=parsed.map((r,i)=>{if(!r[key]||r[key].length>100||!r[amountKey]||!Number.isFinite(Number(r[amountKey]))||Number(r[amountKey])<=0||Number(r[amountKey])>100000)throw fail(`Row ${i+2}: include a ${key} and a valid positive ${amountKey}.`);if(seen.has(r[key]))throw fail(`Row ${i+2}: duplicate ${key}.`);seen.add(r[key]);if(r.active&&!/^(true|false|1|0|yes|no)$/i.test(r.active))throw fail(`Row ${i+2}: active must be true or false.`);const prior=existing.find(x=>x[key]===r[key]);const dates=kind==='codes'?{start_date:r.start_date||prior?.start_date||'',end_date:r.end_date||prior?.end_date||''}:{};if(kind==='codes'&&((dates.start_date&&!date.safeParse(dates.start_date).success)||(dates.end_date&&!date.safeParse(dates.end_date).success)||(dates.start_date&&dates.end_date&&dates.start_date>dates.end_date)))throw fail(`Row ${i+2}: start_date and end_date must be YYYY-MM-DD with the start on or before the end.`);return {id:prior?.id||crypto.randomUUID(),[key]:r[key],[amountKey]:Number(Number(r[amountKey]).toFixed(2)),active:!r.active||/^(true|1|yes)$/i.test(r.active),...dates};});
     for(let i=0;i<records.length;i+=80)await db().batch(records.slice(i,i+80).map(r=>statement(kind,r)));await log(actor.email,`Imported ${records.length} ${kind}`);return ok({count:records.length});
   }
   if(action==="save-user"){

@@ -40,10 +40,11 @@ try{
   await page.getByRole('heading',{name:'Automated decisions',exact:true}).waitFor();assert.ok(page.url().endsWith('/AxiaRewards/home'),page.url());
   pass('demo/demo signs in to the admin portal and wrong passwords are refused');
 
-  await page.getByRole('link',{name:/Review queue/}).click();await page.getByRole('heading',{name:'Pending Rebates',exact:true}).waitFor();
+  await page.getByRole('link',{name:/Review queue/}).click();await page.getByRole('heading',{name:'Review queue',exact:true}).waitFor();
   assert.ok(page.url().includes('/AxiaRewards/pending-rebates'),page.url());
-  await page.locator('tbody tr.clickable').first().locator('td').nth(2).click();
-  await page.getByRole('heading',{name:'Automated decision',exact:true}).waitFor();
+  await page.locator('.q-open').nth(1).click();
+  await page.getByRole('heading',{name:'Rebate decision record',exact:true}).waitFor();
+  await page.locator('.q-item.selected').nth(0).waitFor();
   pass('the review queue opens a rebate with its threshold checks');
 
   await page.goto(base+'/invoices');await page.getByRole('heading',{name:'Invoices',exact:true}).waitFor();

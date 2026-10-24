@@ -1,9 +1,9 @@
 "use client";
 
 import React, {useEffect,useMemo,useState} from "react";
-import {ArrowRight,Ban,CalendarDays,Check,CheckCircle2,ChevronLeft,ChevronRight,CircleX,Download,FileText,LoaderCircle,Pause,Play,Printer,Search,TriangleAlert,X} from "lucide-react";
+import {ArrowRight,CalendarDays,Check,ChevronLeft,ChevronRight,Download,FileText,LoaderCircle,Pause,Play,Printer,Search,X} from "lucide-react";
 import {money,declineReasons,rebateFields,fieldKey,csv,type Row} from "../lib/program";
-import {decisionContext,evaluate,relatedClaims,recommendationLabel,RULES,type Check as EngineCheck,type Evaluation,type Recommendation} from "../lib/decision";
+import {decisionContext,evaluate,recommendationLabel,RULES,type Evaluation,type Recommendation} from "../lib/decision";
 import {invoiceable,invoiceCsv,invoiceTransitions,PAYMENT_TERMS_DAYS} from "../lib/invoice";
 import {withBase} from "../lib/base-path";
 import {api,dateLabel,download,Empty,Modal,Pagination,Pill,Title} from "./admin-ui";
@@ -17,7 +17,7 @@ const fullName=(r:Row)=>`${r.first_name} ${r.last_name}`;
 /** Engine evaluations for the loaded data, computed lazily and cached per rebate. */
 export function useDecisions(data:Row){
   return useMemo(()=>{
-    const ctx=decisionContext({rebates:data.rebates,codes:data.codes,customers:data.customers},data.today||new Date().toISOString().slice(0,10));
+    const ctx=decisionContext({rebates:data.rebates,codes:data.codes,customers:data.customers,serial_file:data.serial_file},data.today||new Date().toISOString().slice(0,10));
     const cache=new Map<string,Evaluation>();
     const get=(r:Row)=>{let e=cache.get(r.id);if(!e){e=evaluate(r,ctx);cache.set(r.id,e);}return e;};
     return {ctx,get};
@@ -26,11 +26,8 @@ export function useDecisions(data:Row){
 
 const recClass:Record<Recommendation,string>={APPROVE:"approved",DECLINE:"declined",REVIEW:"medium"};
 export function RecTag({rec}:{rec:Recommendation}){return <span className={`pill ${recClass[rec]}`}>{recommendationLabel[rec]}</span>;}
-const sourceLabel=(r:Row)=>r.decision?.source==="auto"?"Automatic":r.decision?.source==="engine"?"Engine suggestion":r.decision?.source==="manual"?"Manual":r.approved_declined_by?"Manual (legacy)":"—";
+export const sourceLabel=(r:Row)=>r.decision?.source==="auto"?"Automatic":r.decision?.source==="engine"?"Engine suggestion":r.decision?.source==="manual"?"Manual":r.approved_declined_by?"Manual (legacy)":"—";
 const firstFinding=(ev:Evaluation)=>ev.checks.find(c=>c.status==="fail")||ev.checks.find(c=>c.status==="warn");
-function CheckIcon({status}:{status:EngineCheck["status"]}){
-  return status==="pass"?<CheckCircle2 size={16} className="check-pass" aria-label="Passed"/>:status==="fail"?<CircleX size={16} className="check-fail" aria-label="Failed"/>:<TriangleAlert size={16} className="check-warn" aria-label="Needs review"/>;
-}
 
 /* ---------------- Automation control ---------------- */
 
@@ -183,68 +180,6 @@ export function Rebates({path,data,reload,notify,go,readOnly}:PageProps&{path:st
   </>;
 }
 
-/* ---------------- Rebate detail ---------------- */
-
-function Facts({items}:{items:[string,React.ReactNode][]}){return <dl className="facts">{items.map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v===""||v===undefined||v===null?"—":v}</dd></div>)}</dl>;}
-
-export function RebateDetail({tracking,data,go,reload,notify,readOnly}:PageProps&{tracking:string}){
-  const {ctx,get}=useDecisions(data);
-  const r:Row|undefined=data.rebates.find((x:Row)=>x.tracking_number===tracking);
-  const [confirm,setConfirm]=useState(""),[reason,setReason]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
-  if(!r)return <><button className="back-link" onClick={()=>go("/pending-rebates")}><ChevronLeft size={15}/> Review queue</button><Empty title="Rebate not found" text={`No rebate has tracking number ${tracking}.`}/></>;
-  const ev=get(r),related=relatedClaims(r,ctx),code=ctx.codes.get(r.rebate_code);
-  const customer=r.customer_id?data.customers?.find((c:Row)=>c.id===r.customer_id):undefined;
-  const fraud=r.fraud_case_id?data.fraud?.find((f:Row)=>f.id===r.fraud_case_id):undefined;
-  const invoice=r.program_invoice_id?data.invoices?.find((i:Row)=>i.id===r.program_invoice_id):undefined;
-  const sameCustomer:Row[]=r.customer_id?data.rebates.filter((x:Row)=>x.customer_id===r.customer_id&&x.id!==r.id):[];
-  const relatedRows=[...related.address.map(x=>[x,"Same address and code"]),...related.invoice.map(x=>[x,"Same purchase invoice"]),...related.serial.map(x=>[x,"Same module serial"]),...sameCustomer.map(x=>[x,"Same customer"])] as [Row,string][];
-  const pending=r.status==="PENDING",reasonValue=reason||ev.declineReason||"";
-  async function decide(){setBusy(true);setError("");try{await api({action:"review",ids:[r!.id],status:confirm,reasons:{[r!.id]:reasonValue}});notify(`Rebate ${r!.tracking_number} ${confirm==="APPROVED"?"approved":"declined"}.`);setConfirm("");await reload();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
-  const groups=[...new Set(RULES.map(x=>x.group))];
-  return <>
-    <button className="back-link" onClick={()=>window.history.length>1?window.history.back():go("/pending-rebates")}><ChevronLeft size={15}/> Back</button>
-    <Title title={fullName(r)} sub={`Rebate ${r.tracking_number} · ${money(r.rebate_amount)} · submitted ${dateLabel(r.date_submitted)}`}>
-      <Pill status={r.status}/>
-      {pending&&!readOnly&&<><button className="button secondary compact" onClick={()=>{setError("");setConfirm("DECLINED");}}><Ban size={15}/> Decline</button><button className="button compact" disabled={!!r.payment_hold} title={r.payment_hold?"A fraud-review hold blocks approval":undefined} onClick={()=>{setError("");setConfirm("APPROVED");}}><Check size={15}/> Approve</button></>}
-    </Title>
-    <div className="detail-layout">
-      <div className="detail-main">
-        <section className="panel engine-panel">
-          <div className="panel-heading"><h3>Automated decision</h3><span className="tag">{ev.version}</span></div>
-          <div className="engine-verdict"><RecTag rec={ev.recommendation}/><p>{ev.summary}</p></div>
-          {groups.map(g=><div className="check-group" key={g}><h4>{g}</h4><ul className="check-list">{ev.checks.filter(c=>RULES.find(x=>x.id===c.id)?.group===g).map(c=><li key={c.id} className={`check-${c.status}`}><CheckIcon status={c.status}/><div><b>{c.label}</b><span>{c.detail}</span></div>{c.declineReason&&<em>{c.declineReason}</em>}</li>)}</ul></div>)}
-        </section>
-        <section className="panel"><div className="panel-heading"><h3>Customer</h3>{customer&&<button className="text-button" onClick={()=>go(`/customers?q=${customer.id}`)}>Customer profile</button>}</div>
-          <Facts items={[["Name",fullName(r)],["Email",r.email],["Phone",r.phone],["Address",[r.address1,r.address2].filter(Boolean).join(", ")],["City, state, ZIP",`${r.city}, ${r.state} ${r.zip}`],["Reward type",r.reward_type]]}/></section>
-        <section className="panel"><div className="panel-heading"><h3>Installation and purchase</h3></div>
-          <Facts items={[["Dealer",r.dealer_name],["Sales representative",r.sales_rep_name],["Date of sale",dateLabel(r.date_of_sale)],["Installation confirmed",r.installation_complete_date?dateLabel(r.installation_complete_date):r.preinstallation?"Not yet":"Certified at submission"],["PTO date",dateLabel(r.pto_date)],["Financing",r.financier],["System size",r.system_size_kw?`${r.system_size_kw} kW`:""],["Module model",r.module_model],["Module serial",r.module_serial],["Purchase invoice",r.invoice_number]]}/></section>
-        <section className="panel"><div className="panel-heading"><h3>Program</h3></div>
-          <Facts items={[["Rebate code",r.rebate_code],["Code value",code?money(code.rebate_amount):"Unknown code"],["Requested amount",money(r.rebate_amount)],["Certified by",r.certified_by],["Submitted",dateLabel(r.date_submitted)],["Tracking number",r.tracking_number]]}/></section>
-      </div>
-      <aside className="detail-side">
-        <section className="panel"><div className="panel-heading"><h3>Decision</h3></div>
-          <Facts items={[["Status",<Pill key="s" status={r.status}/>],["Decided",dateLabel(r.date_approved_declined)],["Decided by",r.approved_declined_by],["How",sourceLabel(r)],...(r.decision?.agreed===false?[["Engine",<span key="o" className="override">Overrode the engine's suggestion</span>] as [string,React.ReactNode]]:[]),...(r.decline_reason?[["Decline reason",r.decline_reason] as [string,React.ReactNode]]:[])]}/></section>
-        <section className="panel"><div className="panel-heading"><h3>Program invoice</h3></div><div className="side-body">
-          {invoice?<><button className="tracking-link" onClick={()=>go(`/invoices/${invoice.invoice_number}`)}>{invoice.invoice_number}</button><p><Pill status={invoice.status}/> · {money(invoice.total)} for {invoice.count} rebates</p></>
-            :approvedStatuses.includes(r.status)?<><p>Approved and waiting to be billed.</p><button className="text-button" onClick={()=>go("/invoices")}>Go to invoices</button></>
-            :<p className="muted">Billed after approval.</p>}
-        </div></section>
-        <section className="panel"><div className="panel-heading"><h3>Risk</h3></div>
-          <Facts items={[["Risk level",<Pill key="r" status={r.risk_level||"NOT_ASSESSED"}/>],["Fraud case",fraud?<button key="f" className="tracking-link" onClick={()=>go(`/fraud-review?q=${fraud.id}`)}>{fraud.case_number}</button>:"None"],["Case status",r.fraud_review_status?<Pill key="c" status={r.fraud_review_status}/>:"—"],["Payment hold",r.payment_hold?"Yes, approval blocked":"No"]]}/></section>
-        <section className="panel"><div className="panel-heading"><h3>Related claims</h3><span className="tag">{relatedRows.length}</span></div>
-          {relatedRows.length?<ul className="related-list">{relatedRows.map(([x,why])=><li key={x.id+why}><button className="tracking-link" onClick={()=>go(`/rebate/${x.tracking_number}`)}>{x.tracking_number}</button><span>{why}</span><Pill status={x.status}/></li>)}</ul>:<p className="side-body muted">No other claims share this address, invoice, serial or customer.</p>}
-        </section>
-      </aside>
-    </div>
-    {confirm&&<Modal title={confirm==="APPROVED"?"Approve this rebate?":"Decline this rebate?"} onClose={()=>!busy&&setConfirm("")}>
-      <p className="modal-description">{confirm==="APPROVED"?`${money(r.rebate_amount)} for ${fullName(r)} will be approved and become ready to invoice.`:`${fullName(r)}'s rebate will be declined. They will see the reason when tracking their request.`}{ev.recommendation!==(confirm==="APPROVED"?"APPROVE":"DECLINE")&&<> This differs from the engine's finding ({recommendationLabel[ev.recommendation].toLowerCase()}) and will be recorded as an override.</>}</p>
-      {confirm==="DECLINED"&&<label className="field"><span>Decline reason <em>*</em></span><select value={reasonValue} onChange={e=>setReason(e.target.value)}><option value="">Select a reason</option>{declineReasons.map(x=><option key={x}>{x}</option>)}</select></label>}
-      {error&&<div className="alert error">{error}</div>}
-      <div className="modal-actions"><button className="button secondary" disabled={busy} onClick={()=>setConfirm("")}>Cancel</button><button className={`button ${confirm==="DECLINED"?"danger":""}`} disabled={busy||(confirm==="DECLINED"&&!reasonValue)} onClick={decide}>{busy?<LoaderCircle className="spin" size={16}/>:<Check size={16}/>}Confirm {confirm==="APPROVED"?"approval":"decline"}</button></div>
-    </Modal>}
-  </>;
-}
-
 /* ---------------- Decision rules ---------------- */
 
 export function DecisionRules({data,go,reload,notify,readOnly}:PageProps){
@@ -256,14 +191,16 @@ export function DecisionRules({data,go,reload,notify,readOnly}:PageProps){
   return <>
     <Title title="Decision rules" sub={`A rebate is approved automatically only when it meets every threshold below. Engine version ${data.automation?.engine_version||""}.`}/>
     <AutomationControl data={data} reload={reload} notify={notify} readOnly={readOnly}/>
-    {groups.map(g=><section className="panel rules-panel" key={g}><div className="panel-heading"><h3>{g}</h3></div><div className="table-scroll"><table><thead><tr><th>Threshold</th><th>What it checks</th><th>If not met</th><th className="num">Pending rebates held</th></tr></thead><tbody>
-      {RULES.filter(x=>x.group===g).map(rule=>{const h=hits.get(rule.id);const n=(h?.fail||0)+(h?.warn||0);return <tr key={rule.id}><td><b>{rule.label}</b></td><td className="wrap">{rule.description}</td><td><span className={`pill ${rule.onFail==="Decline"?"declined":"medium"}`}>{rule.onFail==="Decline"?"Hold, suggest decline":"Hold for review"}</span></td><td className="num">{n?<button className="tracking-link" onClick={()=>go(`/pending-rebates?rule=${rule.id}`)}>{n.toLocaleString()}</button>:"0"}</td></tr>;})}
+    {groups.map(g=><section className="panel rules-panel" key={g}><div className="panel-heading"><h3>{g}</h3></div><div className="table-scroll"><table><thead><tr><th className="num">No.</th><th>Condition</th><th>What it checks</th><th>If not met</th><th className="num">Pending rebates held</th></tr></thead><tbody>
+      {RULES.filter(x=>x.group===g).map(rule=>{const h=hits.get(rule.id);const n=(h?.fail||0)+(h?.warn||0);return <tr key={rule.id}><td className="num">{RULES.indexOf(rule)+1}</td><td><b>{rule.label}</b></td><td className="wrap">{rule.description}</td><td><span className={`pill ${rule.onFail==="Decline"?"declined":"medium"}`}>{rule.onFail==="Decline"?"Hold, suggest decline":"Hold for review"}</span></td><td className="num">{n?<button className="tracking-link" onClick={()=>go(`/pending-rebates?rule=${rule.id}`)}>{n.toLocaleString()}</button>:"0"}</td></tr>;})}
     </tbody></table></div></section>)}
     <p className="form-note">Rules are defined in code (lib/decision.ts). Nothing is declined automatically: a failed threshold holds the rebate in the review queue with a suggested outcome.</p>
   </>;
 }
 
 /* ---------------- Invoices ---------------- */
+
+function lastWeek(today?:string){const d=new Date((today||new Date().toISOString().slice(0,10))+"T12:00:00");const end=new Date(d);end.setDate(d.getDate()-d.getDay()-1);const start=new Date(end);start.setDate(end.getDate()-6);const iso=(x:Date)=>x.toISOString().slice(0,10);return [iso(start),iso(end)];}
 
 export function Invoices({data,go,reload,notify,readOnly}:PageProps){
   const ready:Row[]=data.rebates.filter(invoiceable);
@@ -281,8 +218,9 @@ export function Invoices({data,go,reload,notify,readOnly}:PageProps){
     </div>
     <section className="panel invoice-builder"><div className="panel-heading"><h3>Create an invoice</h3></div>
       <div className="side-body">
-        <p className="muted">Includes every approved rebate not yet on an invoice, optionally limited by approval date.</p>
+        <p className="muted">Each week, bill the funder for the previous week's approved rebates. Cards are issued once the invoice is paid.</p>
         <div className="date-filters">
+          <button type="button" className="button secondary compact week-preset" onClick={()=>{const [a,b]=lastWeek(data.today);setFrom(a);setTo(b);}}>Last week</button>
           <label className="field"><span>Approved from</span><input type="date" value={from} max={to||undefined} onChange={e=>setFrom(e.target.value)}/></label>
           <label className="field"><span>Approved to</span><input type="date" value={to} min={from||undefined} onChange={e=>setTo(e.target.value)}/></label>
         </div>

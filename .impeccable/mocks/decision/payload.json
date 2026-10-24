@@ -1,0 +1,248 @@
+{
+  "title": "Choose the visual direction for the Axia approval and denial workspace",
+  "question": "Every option shows the screen admins use most: held rebates on the left, one rebate open with its approval conditions and the Approve / Decline actions. Colors, Poppins and the left sidebar stay fixed; composition, density and one signature move change. Pick one, or ask for another hand.",
+  "options": [
+    {
+      "id": "assigned",
+      "kind": "assigned",
+      "label": "Funding Statement",
+      "kicker": "THE ROLL",
+      "lineage": "Bank remittance advice and funding statements",
+      "thesis": "Each rebate decision is footed like a statement: every approval condition is a line item, and the result is the total.",
+      "palette": [
+        "#001C77",
+        "#00C6C1",
+        "#0F1115",
+        "#FFFFFF",
+        "#F2F0EA",
+        "#F2F2F2"
+      ],
+      "materials": [
+        "statement stock in cream",
+        "tabular figures",
+        "double-ruled totals"
+      ],
+      "viewport": "Sidebar left; a week strip that ties out (submitted = auto-approved + held + declined); held rebates as statement lines with amounts right-aligned; the open rebate as a stub listing proof of purchase, CRM install status, PTO, campaign dates, serial file and integrity checks, footed to Approve or Hold.",
+      "risk": "Money framing must not crowd out the reason a rebate was held; reasons lead every line.",
+      "raised": [
+        {
+          "from": "challenger-feed",
+          "raise": "Review mode: one held rebate owns the work area and the next one is already loaded, one keystroke away."
+        },
+        {
+          "from": "challenger-timetable",
+          "raise": "One body size across every table; rank is carried by weight, rules and reversal, not by size steps."
+        },
+        {
+          "from": "challenger-annual",
+          "raise": "Structure comes from strong rules on one sheet, not from floating cards."
+        },
+        {
+          "from": "challenger-catalog",
+          "raise": "Every record leads with its reference number as its identity: tracking number, invoice number."
+        },
+        {
+          "from": "challenger-exposure",
+          "raise": "Conflicts such as duplicate claims are drawn as a crossing mark, so they read without relying on color."
+        }
+      ],
+      "html": ".impeccable/mocks/decision/assigned.html"
+    },
+    {
+      "id": "model-pick",
+      "kind": "pick",
+      "label": "Permission to Operate",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Utility interconnection and PTO approval letters",
+      "thesis": "Each rebate decision reads like a utility approval letter: numbered conditions, each satisfied or not, and an outcome line.",
+      "palette": [
+        "#001C77",
+        "#00C6C1",
+        "#0F1115",
+        "#FFFFFF",
+        "#F2F0EA",
+        "#F2F2F2"
+      ],
+      "materials": [
+        "letterhead band",
+        "numbered conditions",
+        "an approval line that reads like a stamp"
+      ],
+      "viewport": "Sidebar left; a compact held-rebate list on the left; the open rebate on the right as a letter: reference block, conditions 1 to 10 with satisfied marks, outcome line and the Approve / Decline actions at the foot.",
+      "risk": "The letter form can slow scanning across many rebates; it is strongest on the single-rebate view.",
+      "html": ".impeccable/mocks/decision/model-pick.html"
+    },
+    {
+      "id": "challenger-gate",
+      "kind": "challenger",
+      "catalogId": "vernacular-ephemera-boarding-pass-and-gate-board",
+      "label": "Departures Board",
+      "verdict": "competitive",
+      "lineage": "Boarding pass and live gate board",
+      "thesis": "The queue is a live board ranked by age; a rebate whose state changes stays lit until you have seen it.",
+      "palette": [
+        "#001C77",
+        "#00C6C1",
+        "#0F1115",
+        "#FFFFFF",
+        "#F2F2F2"
+      ],
+      "materials": [
+        "fixed column grid",
+        "segmented record pass",
+        "one alert color for changes"
+      ],
+      "viewport": "Sidebar left; held rebates as a live board in fixed columns ordered by wait time, newly held rows lit teal until opened; the open rebate below as a segmented pass with its conditions.",
+      "case": "Fuses cleanly: held rebates map to departures and the lit change state helps monitoring; ops staff do not recognize travel, so it loses on identification.",
+      "risk": "Ranking by age can hide high-value or high-risk rebates unless a second sort is obvious.",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board-hero.webp",
+      "html": ".impeccable/mocks/decision/challenger-gate.html"
+    },
+    {
+      "id": "challenger-feed",
+      "kind": "challenger",
+      "catalogId": "pop-culture-shelf-vertical-video-feed-surface",
+      "label": "Vertical Feed",
+      "verdict": "declined",
+      "lineage": "Full-screen vertical video feeds",
+      "thesis": "One item owns the screen; the next is one flick away.",
+      "palette": [
+        "#000000",
+        "#FFFFFF"
+      ],
+      "materials": [
+        "full-bleed media",
+        "action rail"
+      ],
+      "viewport": "One rebate fills the screen with actions stacked on the right.",
+      "case": "Loses both: staff need comparison across rebates, and the feed hides the queue.",
+      "kept": "Review mode keeps the next held rebate loaded one keystroke away.",
+      "risk": "Removes the overview that monitoring depends on.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-vertical-video-feed-surface-hero.webp"
+    },
+    {
+      "id": "challenger-timetable",
+      "kind": "challenger",
+      "catalogId": "rw-timetable-slide-rack",
+      "label": "Timetable Slide Rack",
+      "verdict": "declined",
+      "lineage": "1971 pocket airline timetable",
+      "thesis": "One type size; rank by weight, case and rule.",
+      "palette": [
+        "#D9A21B",
+        "#2B2F33",
+        "#F3EEDC",
+        "#C8371D"
+      ],
+      "materials": [
+        "tinted glass slides",
+        "raked containers"
+      ],
+      "viewport": "A raked rack of slides along a lit bed.",
+      "case": "Loses both: raked layouts and goldenrod light fight the fixed palette and a working screen.",
+      "kept": "Tables use one body size and carry rank with weight and rules.",
+      "risk": "Raked geometry hurts scanning.",
+      "hero": "https://impeccable.style/worlds/cards/rw-timetable-slide-rack-hero.webp"
+    },
+    {
+      "id": "challenger-annual",
+      "kind": "challenger",
+      "catalogId": "design-annual-s-plate-section",
+      "label": "Design Annual Plates",
+      "verdict": "declined",
+      "lineage": "Design annual plate sections",
+      "thesis": "A printed sheet registered by crosshairs and hairlines.",
+      "palette": [
+        "#F5F4F6",
+        "#16181A",
+        "#DCDDF3"
+      ],
+      "materials": [
+        "uncoated stock",
+        "registration marks"
+      ],
+      "viewport": "One continuous sheet of plates and credits.",
+      "case": "Loses both: gallery framing and faint hairlines conflict with the request for clearly visible sections.",
+      "kept": "Structure from strong rules on one sheet instead of floating cards.",
+      "risk": "Hairlines read faint.",
+      "hero": "https://impeccable.style/worlds/cards/design-annual-s-plate-section-hero.webp"
+    },
+    {
+      "id": "challenger-catalog",
+      "kind": "challenger",
+      "catalogId": "brand-identity-canon-saville-catalog-sleeve",
+      "label": "Catalog Sleeve",
+      "verdict": "declined",
+      "lineage": "Factory Records catalog identity",
+      "thesis": "Every artifact is a numbered catalog entry.",
+      "palette": [
+        "#0B0B0B",
+        "#FFFFFF",
+        "#E2522C"
+      ],
+      "materials": [
+        "matte black",
+        "coded color strips"
+      ],
+      "viewport": "A black field with a fac number as the headline.",
+      "case": "Loses both: black ground and coded labels break the palette and plain-language status.",
+      "kept": "Records lead with their reference numbers as identity.",
+      "risk": "Coded labels obscure status.",
+      "hero": "https://impeccable.style/worlds/cards/brand-identity-canon-saville-catalog-sleeve-hero.webp"
+    },
+    {
+      "id": "challenger-exposure",
+      "kind": "challenger",
+      "catalogId": "operate-b-exposure-record-zone-sheets",
+      "label": "Exposure Record",
+      "verdict": "declined",
+      "lineage": "Darkroom printer's exposure record",
+      "thesis": "Translucent sheets over a zone ramp; crossing hatches mark conflict.",
+      "palette": [
+        "#1A1A1A",
+        "#8C8C8C",
+        "#E8E6E1",
+        "#C2185B"
+      ],
+      "materials": [
+        "tracing overlays",
+        "hatching"
+      ],
+      "viewport": "Overlapping sheets on a backlit field.",
+      "case": "Loses both: darkroom craft is foreign to solar ops, and overlapping sheets hide data.",
+      "kept": "Duplicate-claim conflicts are drawn as a crossing mark, readable without color.",
+      "risk": "Overlap obscures content.",
+      "hero": "https://impeccable.style/worlds/cards/operate-b-exposure-record-zone-sheets-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "code"
+  },
+  "canon": true,
+  "canonCard": {
+    "kind": "canon",
+    "label": "The category standard",
+    "thesis": "A clean admin dashboard of the kind every SaaS ships, executed at full craft in the Axia palette.",
+    "palette": [
+      "#FFFFFF",
+      "#0F1115",
+      "#001C77",
+      "#00C6C1"
+    ],
+    "materials": [
+      "clean grid",
+      "metric tiles",
+      "data table"
+    ],
+    "viewport": "Sidebar, metric tiles, then the held-rebate table with a detail drawer.",
+    "risk": "This is the generic SaaS look you said would feel wrong.",
+    "html": ".impeccable/mocks/decision/canon.html"
+  },
+  "steer": true
+}

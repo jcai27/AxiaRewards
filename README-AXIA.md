@@ -75,6 +75,16 @@ See `README.md` for the underlying Sites starter and hosting lifecycle.
 
 ## Browser-only demo (GitHub Pages)
 
+### Approval workspace and SOW evidence
+
+The review queue uses a Permission to Operate decision-letter layout: 15 numbered conditions, evidence for each condition, an outcome, and confirmed Approve/Decline actions. Desktop queue rows and condition evidence scroll independently while the outcome and actions stay visible. J/K moves selection, reveals rows beyond the first 40, and starts the next record at its first condition. A completed decision advances to the next held rebate. On smaller screens, opening a queue item navigates to its full record.
+
+Rules v2 adds proof of purchase, installation status from Creatio, campaign dates, and daily serial-file matching to the existing eligibility and integrity checks. These are **demo evidence fields**, not live integrations: new demo submissions simulate a signed-contract date, an installed Creatio result, and a matching serial record. Seeded records include deliberate gaps for review. No contract upload/validation service, live Creatio connection, or daily serial-file feed is configured. Campaign windows are illustrative. Do not use this demo to validate actual purchase or installation evidence.
+
+The invoice builder defaults to the previous Monday–Sunday week and also supports a custom period. Invoice payment changes program records only; no card issuance or money movement is connected. Decline reasons remain provisional, and the SOW's proposed “Signing Offer” naming is still an open product decision.
+
+The finished admin design system is recorded in `DESIGN.md` and `.impeccable/design.json`; review evidence is under `.impeccable/review/`.
+
 `static-demo/` builds a static copy of the portal that needs no server. The real API handlers in `app/api/program/route.ts` run in the page against SQLite compiled to WebAssembly (sql.js), and the database persists in the visitor's browser (IndexedDB). Every visitor gets an independent copy of the fictional demo data. The admin sign-in is `demo` / `demo`; it is a demo convenience, not access control. A "Reset demo" button erases the browser copy.
 
 ```powershell

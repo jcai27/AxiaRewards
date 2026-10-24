@@ -1,0 +1,494 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-24T05:14:39.163Z",
+  "title": "Design System: Axia Rewards Admin",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "Axia Navy",
+        "tonalRamp": [
+          "oklch(15% 0.15591 263.54)",
+          "oklch(26% 0.15591 263.54)",
+          "oklch(38% 0.15591 263.54)",
+          "oklch(49% 0.15591 263.54)",
+          "oklch(61% 0.15591 263.54)",
+          "oklch(72% 0.15591 263.54)",
+          "oklch(84% 0.15591 263.54)",
+          "oklch(95% 0.15591 263.54)"
+        ]
+      },
+      "brand-hover": {
+        "role": "primary",
+        "displayName": "Deep Axia Navy",
+        "tonalRamp": [
+          "oklch(15% 0.12670 263.38)",
+          "oklch(26% 0.12670 263.38)",
+          "oklch(38% 0.12670 263.38)",
+          "oklch(49% 0.12670 263.38)",
+          "oklch(61% 0.12670 263.38)",
+          "oklch(72% 0.12670 263.38)",
+          "oklch(84% 0.12670 263.38)",
+          "oklch(95% 0.12670 263.38)"
+        ]
+      },
+      "brand-soft": {
+        "role": "primary",
+        "displayName": "Selected Navy Tint",
+        "tonalRamp": [
+          "oklch(15% 0.01672 271.24)",
+          "oklch(26% 0.01672 271.24)",
+          "oklch(38% 0.01672 271.24)",
+          "oklch(49% 0.01672 271.24)",
+          "oklch(61% 0.01672 271.24)",
+          "oklch(72% 0.01672 271.24)",
+          "oklch(84% 0.01672 271.24)",
+          "oklch(95% 0.01672 271.24)"
+        ]
+      },
+      "teal": {
+        "role": "secondary",
+        "displayName": "Axia Teal",
+        "tonalRamp": [
+          "oklch(15% 0.12834 191.55)",
+          "oklch(26% 0.12834 191.55)",
+          "oklch(38% 0.12834 191.55)",
+          "oklch(49% 0.12834 191.55)",
+          "oklch(61% 0.12834 191.55)",
+          "oklch(72% 0.12834 191.55)",
+          "oklch(84% 0.12834 191.55)",
+          "oklch(95% 0.12834 191.55)"
+        ]
+      },
+      "teal-soft": {
+        "role": "secondary",
+        "displayName": "Teal Tint",
+        "tonalRamp": [
+          "oklch(15% 0.02818 193.97)",
+          "oklch(26% 0.02818 193.97)",
+          "oklch(38% 0.02818 193.97)",
+          "oklch(49% 0.02818 193.97)",
+          "oklch(61% 0.02818 193.97)",
+          "oklch(72% 0.02818 193.97)",
+          "oklch(84% 0.02818 193.97)",
+          "oklch(95% 0.02818 193.97)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Document Ink",
+        "tonalRamp": [
+          "oklch(15% 0.00887 264.32)",
+          "oklch(26% 0.00887 264.32)",
+          "oklch(38% 0.00887 264.32)",
+          "oklch(49% 0.00887 264.32)",
+          "oklch(61% 0.00887 264.32)",
+          "oklch(72% 0.00887 264.32)",
+          "oklch(84% 0.00887 264.32)",
+          "oklch(95% 0.00887 264.32)"
+        ]
+      },
+      "text-2": {
+        "role": "neutral",
+        "displayName": "Supporting Ink",
+        "tonalRamp": [
+          "oklch(15% 0.02484 269.73)",
+          "oklch(26% 0.02484 269.73)",
+          "oklch(38% 0.02484 269.73)",
+          "oklch(49% 0.02484 269.73)",
+          "oklch(61% 0.02484 269.73)",
+          "oklch(72% 0.02484 269.73)",
+          "oklch(84% 0.02484 269.73)",
+          "oklch(95% 0.02484 269.73)"
+        ]
+      },
+      "text-3": {
+        "role": "neutral",
+        "displayName": "Quiet Ink",
+        "tonalRamp": [
+          "oklch(15% 0.02634 271.69)",
+          "oklch(26% 0.02634 271.69)",
+          "oklch(38% 0.02634 271.69)",
+          "oklch(49% 0.02634 271.69)",
+          "oklch(61% 0.02634 271.69)",
+          "oklch(72% 0.02634 271.69)",
+          "oklch(84% 0.02634 271.69)",
+          "oklch(95% 0.02634 271.69)"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Desk Gray",
+        "tonalRamp": [
+          "oklch(15% 0.00000 0.00)",
+          "oklch(26% 0.00000 0.00)",
+          "oklch(38% 0.00000 0.00)",
+          "oklch(49% 0.00000 0.00)",
+          "oklch(61% 0.00000 0.00)",
+          "oklch(72% 0.00000 0.00)",
+          "oklch(84% 0.00000 0.00)",
+          "oklch(95% 0.00000 0.00)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White Sheet",
+        "tonalRamp": [
+          "oklch(15% 0.00000 0.00)",
+          "oklch(26% 0.00000 0.00)",
+          "oklch(38% 0.00000 0.00)",
+          "oklch(49% 0.00000 0.00)",
+          "oklch(61% 0.00000 0.00)",
+          "oklch(72% 0.00000 0.00)",
+          "oklch(84% 0.00000 0.00)",
+          "oklch(95% 0.00000 0.00)"
+        ]
+      },
+      "subtle": {
+        "role": "neutral",
+        "displayName": "Subtle Surface",
+        "tonalRamp": [
+          "oklch(15% 0.00132 286.38)",
+          "oklch(26% 0.00132 286.38)",
+          "oklch(38% 0.00132 286.38)",
+          "oklch(49% 0.00132 286.38)",
+          "oklch(61% 0.00132 286.38)",
+          "oklch(72% 0.00132 286.38)",
+          "oklch(84% 0.00132 286.38)",
+          "oklch(95% 0.00132 286.38)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Visible Rule",
+        "tonalRamp": [
+          "oklch(15% 0.02243 267.16)",
+          "oklch(26% 0.02243 267.16)",
+          "oklch(38% 0.02243 267.16)",
+          "oklch(49% 0.02243 267.16)",
+          "oklch(61% 0.02243 267.16)",
+          "oklch(72% 0.02243 267.16)",
+          "oklch(84% 0.02243 267.16)",
+          "oklch(95% 0.02243 267.16)"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Strong Rule",
+        "tonalRamp": [
+          "oklch(15% 0.02634 271.69)",
+          "oklch(26% 0.02634 271.69)",
+          "oklch(38% 0.02634 271.69)",
+          "oklch(49% 0.02634 271.69)",
+          "oklch(61% 0.02634 271.69)",
+          "oklch(72% 0.02634 271.69)",
+          "oklch(84% 0.02634 271.69)",
+          "oklch(95% 0.02634 271.69)"
+        ]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Internal Rule",
+        "tonalRamp": [
+          "oklch(15% 0.01915 264.43)",
+          "oklch(26% 0.01915 264.43)",
+          "oklch(38% 0.01915 264.43)",
+          "oklch(49% 0.01915 264.43)",
+          "oklch(61% 0.01915 264.43)",
+          "oklch(72% 0.01915 264.43)",
+          "oklch(84% 0.01915 264.43)",
+          "oklch(95% 0.01915 264.43)"
+        ]
+      },
+      "ok": {
+        "role": "secondary",
+        "displayName": "Satisfied Green",
+        "tonalRamp": [
+          "oklch(15% 0.08773 175.75)",
+          "oklch(26% 0.08773 175.75)",
+          "oklch(38% 0.08773 175.75)",
+          "oklch(49% 0.08773 175.75)",
+          "oklch(61% 0.08773 175.75)",
+          "oklch(72% 0.08773 175.75)",
+          "oklch(84% 0.08773 175.75)",
+          "oklch(95% 0.08773 175.75)"
+        ]
+      },
+      "ok-soft": {
+        "role": "secondary",
+        "displayName": "Satisfied Tint",
+        "tonalRamp": [
+          "oklch(15% 0.02404 180.63)",
+          "oklch(26% 0.02404 180.63)",
+          "oklch(38% 0.02404 180.63)",
+          "oklch(49% 0.02404 180.63)",
+          "oklch(61% 0.02404 180.63)",
+          "oklch(72% 0.02404 180.63)",
+          "oklch(84% 0.02404 180.63)",
+          "oklch(95% 0.02404 180.63)"
+        ]
+      },
+      "warn": {
+        "role": "secondary",
+        "displayName": "Review Amber",
+        "tonalRamp": [
+          "oklch(15% 0.10260 67.90)",
+          "oklch(26% 0.10260 67.90)",
+          "oklch(38% 0.10260 67.90)",
+          "oklch(49% 0.10260 67.90)",
+          "oklch(61% 0.10260 67.90)",
+          "oklch(72% 0.10260 67.90)",
+          "oklch(84% 0.10260 67.90)",
+          "oklch(95% 0.10260 67.90)"
+        ]
+      },
+      "warn-soft": {
+        "role": "secondary",
+        "displayName": "Review Tint",
+        "tonalRamp": [
+          "oklch(15% 0.03770 86.89)",
+          "oklch(26% 0.03770 86.89)",
+          "oklch(38% 0.03770 86.89)",
+          "oklch(49% 0.03770 86.89)",
+          "oklch(61% 0.03770 86.89)",
+          "oklch(72% 0.03770 86.89)",
+          "oklch(84% 0.03770 86.89)",
+          "oklch(95% 0.03770 86.89)"
+        ]
+      },
+      "bad": {
+        "role": "secondary",
+        "displayName": "Decline Red",
+        "tonalRamp": [
+          "oklch(15% 0.17728 29.79)",
+          "oklch(26% 0.17728 29.79)",
+          "oklch(38% 0.17728 29.79)",
+          "oklch(49% 0.17728 29.79)",
+          "oklch(61% 0.17728 29.79)",
+          "oklch(72% 0.17728 29.79)",
+          "oklch(84% 0.17728 29.79)",
+          "oklch(95% 0.17728 29.79)"
+        ]
+      },
+      "bad-soft": {
+        "role": "secondary",
+        "displayName": "Decline Tint",
+        "tonalRamp": [
+          "oklch(15% 0.01986 25.17)",
+          "oklch(26% 0.01986 25.17)",
+          "oklch(38% 0.01986 25.17)",
+          "oklch(49% 0.01986 25.17)",
+          "oklch(61% 0.01986 25.17)",
+          "oklch(72% 0.01986 25.17)",
+          "oklch(84% 0.01986 25.17)",
+          "oklch(95% 0.01986 25.17)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Page headline",
+        "purpose": "Ordinary page titles; queue uses medium weight."
+      },
+      "record-title": {
+        "displayName": "Record title",
+        "purpose": "White title on the navy letterhead."
+      },
+      "title": {
+        "displayName": "Section title",
+        "purpose": "Operational sections."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Administrator prose and evidence."
+      },
+      "label": {
+        "displayName": "Control label",
+        "purpose": "Buttons and compact controls."
+      },
+      "status": {
+        "displayName": "Status label",
+        "purpose": "Small semantic tags and metadata."
+      }
+    },
+    "shadows": [
+      {
+        "name": "modal",
+        "value": "0 12px 32px #171a2633",
+        "purpose": "Active dialogs."
+      },
+      {
+        "name": "toast",
+        "value": "0 8px 24px #171a2626",
+        "purpose": "Temporary feedback."
+      },
+      {
+        "name": "queue-selected",
+        "value": "inset 0 0 0 1px var(--ax-brand)",
+        "purpose": "Selected queue boundary."
+      },
+      {
+        "name": "field-focus",
+        "value": "0 0 0 3px #001c7722",
+        "purpose": "Input and enclosing search focus ring."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-state",
+        "value": "background .15s, border-color .15s",
+        "purpose": "Flat button state changes."
+      },
+      {
+        "name": "navigation-state",
+        "value": "background .15s, color .15s",
+        "purpose": "Navigation hover/current treatment."
+      },
+      {
+        "name": "mobile-sidebar",
+        "value": "transform .2s cubic-bezier(.2,.8,.2,1)",
+        "purpose": "Off-canvas sidebar open and close."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-desktop",
+        "value": "1200px"
+      },
+      {
+        "name": "navigation-and-review-stack",
+        "value": "1024px"
+      },
+      {
+        "name": "phone",
+        "value": "640px"
+      },
+      {
+        "name": "bounded-review-min",
+        "value": "1025px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Shared administrator action.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\">Search</button>",
+      "css": ".ds-btn-primary{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 16px;border:1px solid var(--ax-brand,#001c77);border-radius:var(--ax-radius,8px);font-size:13.5px;font-weight:500;line-height:1.3;cursor:pointer;transition:background .15s,border-color .15s;background:var(--ax-brand,#001c77);color:var(--ax-surface,#fff);border-color:var(--ax-brand,#001c77)}.ds-btn-primary:hover:not(:disabled){background:var(--ax-brand-hover,#00145a);border-color:var(--ax-brand-hover,#00145a)}.ds-btn-primary:disabled{opacity:.5;cursor:not-allowed}.ds-btn-primary:focus-visible{outline:2px solid var(--ax-brand,#001c77);outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Shared administrator action.",
+      "html": "<button type=\"button\" class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 16px;border:1px solid var(--ax-brand,#001c77);border-radius:var(--ax-radius,8px);font-size:13.5px;font-weight:500;line-height:1.3;cursor:pointer;transition:background .15s,border-color .15s;background:var(--ax-surface,#fff);color:var(--ax-ink,#0f1115);border-color:var(--ax-line-strong,#5b6070)}.ds-btn-secondary:hover:not(:disabled){background:var(--ax-subtle,#f7f7f8);border-color:#b6b3c0}.ds-btn-secondary:disabled{opacity:.5;cursor:not-allowed}.ds-btn-secondary:focus-visible{outline:2px solid var(--ax-brand,#001c77);outline-offset:2px}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirmation after review.",
+      "html": "<button type=\"button\" class=\"ds-btn-danger\">Confirm decline</button>",
+      "css": ".ds-btn-danger{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 16px;border:1px solid var(--ax-brand,#001c77);border-radius:var(--ax-radius,8px);font-size:13.5px;font-weight:500;line-height:1.3;cursor:pointer;transition:background .15s,border-color .15s;background:var(--ax-bad,#ae2216);color:var(--ax-surface,#fff);border-color:var(--ax-bad,#ae2216)}.ds-btn-danger:hover:not(:disabled){background:#8f1b11;border-color:#8f1b11}.ds-btn-danger:disabled{opacity:.5;cursor:not-allowed}.ds-btn-danger:focus-visible{outline:2px solid var(--ax-brand,#001c77);outline-offset:2px}"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "search-input",
+      "description": "Queue or table search with a visible boundary and enclosing focus ring.",
+      "html": "<div class=\"ds-search\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input class=\"ds-search-field\" aria-label=\"Search rebates\" placeholder=\"Name, tracking number, code?\"/></div>",
+      "css": ".ds-search{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--ax-line-strong,#5b6070);border-radius:var(--ax-radius,8px);background:var(--ax-surface,#fff);color:#8a8595}.ds-search:focus-within{border-color:var(--ax-brand,#001c77);box-shadow:0 0 0 3px #001c7722}.ds-search-field{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;width:100%;min-width:0;border:0;background:var(--ax-surface,#fff);color:var(--ax-ink,#0f1115);font-size:13.5px}.ds-search-field:focus{outline:0;box-shadow:none}.ds-search-field::placeholder{color:var(--ax-text-3,#5b6070);opacity:1}"
+    },
+    {
+      "name": "Current Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-current",
+      "description": "A selected real destination in the left administrator navigation.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Decisions\"><a class=\"ds-nav-link\" href=\"#review-queue\" aria-current=\"page\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 2\"/></svg><span class=\"ds-nav-label\">Review queue</span><span class=\"ds-nav-count\">685</span></a></nav>",
+      "css": ".ds-nav{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;padding:12px;background:var(--ax-surface,#fff)}.ds-nav-link{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:var(--ax-radius,8px);font-size:14px;font-weight:500;background:var(--ax-brand,#001c77);color:#fff;text-decoration:none;transition:background .15s,color .15s}.ds-nav-link>svg{color:var(--ax-teal,#00c6c1)}.ds-nav-label{flex:1}.ds-nav-count{font-size:12px;font-weight:600;line-height:18px;padding:0 7px;border:1px solid var(--ax-teal,#00c6c1);border-radius:6px;background:var(--ax-teal,#00c6c1);color:var(--ax-brand,#001c77)}.ds-nav-link:focus-visible{outline:2px solid var(--ax-brand,#001c77);outline-offset:2px}"
+    },
+    {
+      "name": "Decline Suggestion Tag",
+      "kind": "chip",
+      "refersTo": "status-declined",
+      "description": "A noninteractive semantic status tag with an explicit word label.",
+      "html": "<span class=\"ds-status\">Suggest decline</span>",
+      "css": ".ds-status{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;display:inline-block;padding:2px 7px;border-radius:3px;border:0;background:var(--ax-bad-soft,#fbe9e7);color:var(--ax-bad,#ae2216);font-size:12px;line-height:18px;font-weight:500;letter-spacing:0}"
+    },
+    {
+      "name": "Data Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Flat, bounded supporting information; no ambient card shadow.",
+      "html": "<section class=\"ds-panel\"><div class=\"ds-panel-heading\"><h3 class=\"ds-panel-title\">Customer</h3></div><dl class=\"ds-panel-facts\"><div class=\"ds-panel-fact\"><dt class=\"ds-panel-label\">Name</dt><dd class=\"ds-panel-value\">Daniel Jackson</dd></div></dl></section>",
+      "css": ".ds-panel{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--ax-surface,#fff);color:var(--ax-ink,#0f1115);border:1px solid var(--ax-line,#7a808e);border-radius:var(--ax-radius-lg,12px);overflow:hidden;box-shadow:none}.ds-panel-heading{padding:14px 18px;min-height:52px;background:var(--ax-subtle,#f7f7f8);border-bottom:1px solid var(--ax-line,#7a808e)}.ds-panel-title{margin:0;font-size:15px;font-weight:600}.ds-panel-facts{margin:0;padding:6px 18px 12px}.ds-panel-fact{display:flex;flex-direction:column;gap:1px;padding:8px 0;border-bottom:1px solid var(--ax-line-soft,#8a909c)}.ds-panel-label{font-size:12px;color:var(--ax-text-3,#5b6070)}.ds-panel-value{margin:0;font-size:14px}"
+    },
+    {
+      "name": "Numbered Condition",
+      "kind": "custom",
+      "refersTo": "condition",
+      "description": "Stable rule number, evidence and explicit status in a responsive record row.",
+      "html": "<ol class=\"ds-conditions\"><li class=\"ds-condition\"><span class=\"ds-condition-number\">3</span><div class=\"ds-condition-evidence\"><b class=\"ds-condition-title\">Project completed with PTO</b><small class=\"ds-condition-detail\">Installed; PTO granted 2026-10-09.</small></div><span class=\"ds-condition-status\">Satisfied</span></li></ol>",
+      "css": ".ds-conditions{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;list-style:none;margin:0;padding:0;background:var(--ax-surface,#fff);color:var(--ax-ink,#0f1115)}.ds-condition{display:grid;grid-template-columns:32px minmax(0,1fr) 120px;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--ax-line-soft,#8a909c)}.ds-condition-number{color:var(--ax-text-3,#5b6070);font-variant-numeric:tabular-nums;padding-top:1px;font-size:14px}.ds-condition-title{display:block;font-size:14.5px;font-weight:500}.ds-condition-detail{display:block;font-size:13px;color:var(--ax-text-3,#5b6070);margin-top:1px;overflow-wrap:anywhere}.ds-condition-status{text-align:right;font-size:13px;font-weight:500;color:var(--ax-ok,#0a6e5c)}@media(max-width:640px){.ds-condition{grid-template-columns:24px minmax(0,1fr)}.ds-condition-status{grid-column:2;text-align:left}}"
+    },
+    {
+      "name": "Held Decision Outcome",
+      "kind": "custom",
+      "refersTo": "outcome-decline",
+      "description": "One explicit decision outcome, using a stronger semantic border.",
+      "html": "<div class=\"ds-outcome\" role=\"status\"><b class=\"ds-outcome-title\">Held ? suggest decline</b><span class=\"ds-outcome-detail\">Duplicate rebate submitted ? condition 12</span></div>",
+      "css": ".ds-outcome{font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;background:var(--ax-surface,#fff);border:2px solid var(--ax-bad,#ae2216);border-radius:10px;padding:14px 18px;font-size:14px}.ds-outcome-title{font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ax-bad,#ae2216)}.ds-outcome-detail{font-size:13.5px;color:var(--ax-text-2,#3d4250)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Permission to Operate",
+    "overview": "Axia's administrator workspace feels like a clear utility decision: evidence first, an explicit status, and an accountable action. White surfaces, navy authority, visible gray rules and restrained Poppins make long records readable without decorative treatment. The actual Axia by Qcells logo remains the identity anchor.\n\nThis system describes the shipped administrator module, including its shared lists, dashboard, rules and invoices. The numbered decision letter is a signature review component, not a required composition for every screen. Consumer routes still use the older styling in `app/globals.css`; their later redesign must retain the solar photograph and illustrative Visa card. Their inherited DM Sans/Manrope typography, gradients and card animation are not administrator rules.",
+    "keyCharacteristics": [
+      "Strong, visible boundaries on flat white surfaces.",
+      "Navy actions and selection; teal identity accents.",
+      "Readable operational density with tabular references and amounts.",
+      "Explicit condition states and a separate decision outcome.",
+      "Responsive structure that preserves evidence and actions."
+    ],
+    "rules": [
+      {
+        "name": "The Visible Boundary Rule",
+        "body": "Use the established line colors for panel, queue, condition and control boundaries; do not substitute faint decorative hairlines.",
+        "section": "colors"
+      },
+      {
+        "name": "The State Has Words Rule",
+        "body": "Color supports a written status or explanation. A disabled approval action must visibly explain a blocking fraud-review hold.",
+        "section": "colors"
+      },
+      {
+        "name": "The Decision Stays Available Rule",
+        "body": "On desktop review, queue browsing and evidence reading must preserve access to the selected rebate's outcome and actions.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Workspace Rule",
+        "body": "Keep routine sheets, panels and buttons flat; reserve elevation for dialogs and temporary feedback.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep the actual Axia by Qcells logo, fixed brand palette and Poppins administrator typography.",
+      "**Do** use visible boundaries to separate panels, conditions, queue rows and controls.",
+      "**Do** pair semantic color with explicit status words and visible blocking explanations.",
+      "**Do** preserve tabular references, readable evidence and access to decision actions.",
+      "**Do** reuse the administrator primitives across shared admin pages while choosing composition for each job."
+    ],
+    "donts": [
+      "**Don't** introduce generic SaaS decoration, playful styling, cramped density or off-brand colors.",
+      "**Don't** replace strong boundaries with faint hairlines or rely on color alone for state.",
+      "**Don't** add ambient card shadows, hover lift or entrance choreography to the administrator workspace.",
+      "**Don't** make every page a decision letter or apply this administrator composition to consumer routes.",
+      "**Don't** canonize the consumer site's inherited typography and visual effects as administrator guidance.",
+      ""
+    ]
+  }
+}

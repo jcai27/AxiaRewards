@@ -2,7 +2,7 @@ import type { Row } from "./program";
 
 // Rebate decision engine. Pure and isomorphic: the browser uses it to show
 // recommendations, and the API re-runs it before applying any decision.
-export const ENGINE_VERSION = "rules-v1";
+export const ENGINE_VERSION = "rules-v2";
 
 export type CheckStatus = "pass" | "fail" | "warn";
 export type Recommendation = "APPROVE" | "DECLINE" | "REVIEW";
@@ -17,14 +17,21 @@ const approvedStatuses = ["APPROVED", "FUNDED", "SHIPPED"];
 
 // A rebate is approved automatically only when every rule passes. Any failure or
 // warning holds it for a person; "onFail" is the suggested outcome for that person.
+// Conditions follow the Axia/BPS SOW: validated proof of purchase (signed installation
+// contract), installation status validated with Creatio, campaign start and end dates,
+// rebate code and amount, and the daily serial file, plus PTO and integrity checks.
 export const RULES: Rule[] = [
+  { id: "proof", group: "Project completion", label: "Proof of purchase on file", description: "The signed and completed installation contract has been received.", onFail: "Review" },
+  { id: "crm", group: "Project completion", label: "Installation verified in Creatio", description: "Axia's Creatio CRM reports the installation as complete.", onFail: "Review" },
   { id: "pto", group: "Project completion", label: "Project completed with PTO", description: "The solar system is installed and the utility has granted Permission to Operate (PTO), dated on or before today.", onFail: "Decline" },
   { id: "dates", group: "Project completion", label: "Sale, install and PTO dates are consistent", description: "The sale is on or before submission; PTO is on or after the sale and on or before the request was filed.", onFail: "Decline" },
+  { id: "campaign", group: "Eligibility", label: "Sale within campaign dates", description: "The date of sale falls between the rebate campaign's start and end dates.", onFail: "Decline" },
   { id: "code", group: "Eligibility", label: "Rebate code is active", description: "The submitted rebate code exists and is currently active.", onFail: "Decline" },
   { id: "amount", group: "Eligibility", label: "Amount matches code value", description: "The requested amount equals the value of the rebate code.", onFail: "Review" },
   { id: "window", group: "Eligibility", label: `Filed within ${SUBMISSION_WINDOW_DAYS} days of PTO`, description: `The request was filed no more than ${SUBMISSION_WINDOW_DAYS} days after PTO.`, onFail: "Review" },
   { id: "financier", group: "Eligibility", label: "Financing option is valid", description: `Financing is one of: ${VALID_FINANCIERS.join(", ")}.`, onFail: "Decline" },
   { id: "certified", group: "Eligibility", label: "Form is certified", description: "The customer certified the submission and named the certifier.", onFail: "Review" },
+  { id: "serial", group: "Integrity", label: "Serial in daily serial file", description: "The module serial number appears in the daily serial file Axia sends to BPS.", onFail: "Review" },
   { id: "duplicate", group: "Integrity", label: "No duplicate claim", description: "No other non-declined claim shares this address and rebate code, invoice number, or module serial.", onFail: "Decline" },
   { id: "fraud", group: "Integrity", label: "No fraud hold", description: "The claim has no open fraud case or payment hold.", onFail: "Review" },
   { id: "risk", group: "Integrity", label: "Risk level acceptable", description: "Risk level is low or not assessed.", onFail: "Review" },
@@ -43,6 +50,7 @@ export type DecisionContext = {
   byAddressCode: Map<string, Row[]>;
   byInvoice: Map<string, Row[]>;
   bySerial: Map<string, Row[]>;
+  serialFile: Set<string>;
 };
 
 function group(rows: Row[], key: (r: Row) => string) {
@@ -57,7 +65,7 @@ function group(rows: Row[], key: (r: Row) => string) {
   return map;
 }
 
-export function decisionContext(data: { rebates: Row[]; codes: Row[]; customers?: Row[] }, today: string): DecisionContext {
+export function decisionContext(data: { rebates: Row[]; codes: Row[]; customers?: Row[]; serial_file?: string[] }, today: string): DecisionContext {
   const live = data.rebates.filter((r) => r.status !== "DECLINED");
   return {
     today,
@@ -66,6 +74,7 @@ export function decisionContext(data: { rebates: Row[]; codes: Row[]; customers?
     byAddressCode: group(live, (r) => (r.address1 && r.zip ? `${norm(r.address1)}|${norm(r.zip)}|${r.rebate_code}` : "")),
     byInvoice: group(live, (r) => norm(r.invoice_number)),
     bySerial: group(live, (r) => norm(r.module_serial)),
+    serialFile: new Set((data.serial_file || []).map(norm)),
   };
 }
 
@@ -84,10 +93,26 @@ export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
   const add = (id: string, status: CheckStatus, detail: string, declineReason?: string) =>
     checks.push({ id, label: ruleLabel(id), status, detail, ...(status === "fail" && declineReason ? { declineReason } : {}) });
 
+  if (r.proof_of_purchase) add("proof", "pass", `Signed installation contract dated ${r.proof_of_purchase}.`);
+  else add("proof", "warn", "No signed installation contract has been received.");
+
+  const crm = String(r.crm_install_status || "");
+  const crmSource = r.crm_source === "demo-simulated" ? " (simulated sync)" : "";
+  if (crm === "INSTALLED") add("crm", "pass", `Creatio reports Installed${r.crm_synced ? `, synced ${r.crm_synced}` : ""}${crmSource}.`);
+  else if (crm === "PENDING") add("crm", "warn", `Creatio reports installation pending${crmSource}.`);
+  else if (crm === "NOT_FOUND") add("crm", "warn", "No matching project was found in Creatio.");
+  else add("crm", "warn", "Installation status has not been received from Creatio.");
+
   const code = ctx.codes.get(r.rebate_code);
   if (!code) add("code", "fail", `Code "${r.rebate_code}" is not a program rebate code.`, "Incorrect Rebate Code Selected");
   else if (!code.active) add("code", "fail", `Code "${r.rebate_code}" is inactive.`, "Incorrect Rebate Code Selected");
   else add("code", "pass", `${r.rebate_code} is active (${usd(code.rebate_amount)}).`);
+
+  if (!code) add("campaign", "warn", "Cannot check campaign dates without a valid code.");
+  else if (!code.start_date || !code.end_date) add("campaign", "warn", `${r.rebate_code} has no campaign start and end dates.`);
+  else if (!r.date_of_sale || r.date_of_sale < code.start_date || r.date_of_sale > code.end_date)
+    add("campaign", "fail", `Sold ${r.date_of_sale || "on an unknown date"}; ${r.rebate_code} runs ${code.start_date} to ${code.end_date}.`, "Sale outside campaign dates");
+  else add("campaign", "pass", `Sold ${r.date_of_sale}; ${r.rebate_code} runs ${code.start_date} to ${code.end_date}.`);
 
   if (code && Math.abs(Number(code.rebate_amount) - Number(r.rebate_amount)) > 0.005)
     add("amount", "warn", `Requested ${usd(r.rebate_amount)}; ${r.rebate_code} pays ${usd(code.rebate_amount)}.`);
@@ -100,8 +125,9 @@ export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
   else if (r.pto_date > ctx.today) add("pto", "fail", `PTO date ${r.pto_date} is in the future.`, "System has not passed Permission To Operate (PTO) yet");
   else add("pto", "pass", `Installed; PTO granted ${r.pto_date}.`);
 
-  // Pre-installation registrations are filed twice; PTO is judged against the finalization date.
-  const filed = r.installation_complete_date || r.date_submitted;
+  // Pre-installation registrations are filed twice, so PTO is judged against the later of the
+  // submission and finalization dates. (Imported records may carry an earlier install date.)
+  const filed = [r.date_submitted, r.installation_complete_date].filter(Boolean).sort().at(-1) as string;
   if (!r.date_of_sale || r.date_of_sale > r.date_submitted || r.date_of_sale > ctx.today)
     add("dates", "fail", `Date of sale ${r.date_of_sale || "is missing"} is after submission on ${r.date_submitted}.`, "Invalid Date of Sale");
   else if (r.pto_date && r.pto_date < r.date_of_sale) add("dates", "fail", `PTO ${r.pto_date} is before the sale on ${r.date_of_sale}.`, "Invalid Date of Sale");
@@ -119,6 +145,10 @@ export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
   else add("financier", "pass", financier);
 
   add("certified", r.certified_by ? "pass" : "warn", r.certified_by ? `Certified by ${r.certified_by}.` : "No certifier named.");
+
+  if (!r.module_serial) add("serial", "warn", "No module serial number recorded.");
+  else if (!ctx.serialFile.has(norm(r.module_serial))) add("serial", "warn", `${r.module_serial} is not in the daily serial file.`);
+  else add("serial", "pass", `${r.module_serial} matched in the daily serial file.`);
 
   const related = relatedClaims(r, ctx);
   const approvedTwin = related.address.find((o) => approvedStatuses.includes(o.status));
