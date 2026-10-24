@@ -411,15 +411,15 @@ function signInPage(
   response.setHeader("Cache-Control", "private, no-store");
   response.setHeader("X-Frame-Options", "DENY");
   response.setHeader("Referrer-Policy", "same-origin");
-  response.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Axia admin sign in</title>
-<style>:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f4f6;color:#1b1726;font:14px/1.5 Inter,system-ui,-apple-system,'Segoe UI',sans-serif;padding:16px}
+  response.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Axia admin sign in</title><link rel="preconnect" href="https://fonts.gstatic.com"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f4f6;color:#1b1726;font:14px/1.5 Poppins,system-ui,-apple-system,'Segoe UI',sans-serif;padding:16px}
 main{width:100%;max-width:380px;background:#fff;border:1px solid #e3e2e8;border-radius:6px;padding:28px}
-.brand{display:flex;align-items:baseline;gap:6px;margin-bottom:20px}.brand b{font-size:26px;letter-spacing:-1.5px;color:#4815a5}.brand span{font-size:12px;color:#6b6677}
+.brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}.brand img{height:40px;width:auto}.brand span{font-size:12px;font-weight:500;color:#001c77;background:#e8ecf8;padding:3px 8px;border-radius:6px}
 h1{font-size:18px;font-weight:600;margin:0}p{margin:4px 0 20px;color:#6b6677}label{display:block;font-size:13px;font-weight:500;color:#4f4a5c;margin-bottom:6px}
-input{width:100%;height:38px;border:1px solid #cdcbd5;border-radius:4px;padding:0 10px;font:inherit}input:focus{outline:0;border-color:#4815a5;box-shadow:0 0 0 3px #4815a522}
-button{margin-top:16px;width:100%;height:38px;border:0;border-radius:4px;background:#4815a5;color:#fff;font:inherit;font-weight:500;cursor:pointer}button:hover{background:#3a0f88}button:focus-visible{outline:2px solid #4815a5;outline-offset:2px}
-.error{background:#fbe9e7;color:#ae2216;border:1px solid #f0c9c4;border-radius:4px;padding:8px 10px;margin-bottom:16px;font-size:13px}a{color:#4815a5;font-size:13px}.back{display:block;margin-top:16px;text-align:center}</style></head>
-<body><main><div class="brand"><b>axia</b><span>by Qcells · Admin</span></div><h1>Sign in</h1><p>Sign in to manage the rebate and referral program.</p>
+input{width:100%;height:38px;border:1px solid #cdcbd5;border-radius:4px;padding:0 10px;font:inherit}input:focus{outline:0;border-color:#001c77;box-shadow:0 0 0 3px #001c7722}
+button{margin-top:16px;width:100%;height:38px;border:0;border-radius:4px;background:#001c77;color:#fff;font:inherit;font-weight:500;cursor:pointer}button:hover{background:#00145a}button:focus-visible{outline:2px solid #001c77;outline-offset:2px}
+.error{background:#fbe9e7;color:#ae2216;border:1px solid #f0c9c4;border-radius:4px;padding:8px 10px;margin-bottom:16px;font-size:13px}a{color:#001c77;font-size:13px}.back{display:block;margin-top:16px;text-align:center}</style></head>
+<body><main><div class="brand"><img src="/axia-logo.png" alt="Axia by Qcells" height="40"><span>Admin</span></div><h1>Sign in</h1><p>Sign in to manage the rebate and referral program.</p>
 ${error ? `<div class="error" role="alert">${escape(error)}</div>` : ""}<form method="post" action="/signin-with-chatgpt?return_to=${encodeURIComponent(returnTo)}"><label for="username">Username</label><input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus><label for="password" style="margin-top:14px">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button type="submit">Sign in</button></form>
 <a class="back" href="/">Back to the rebate site</a></main></body></html>`);
 }

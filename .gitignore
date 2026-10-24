@@ -49,3 +49,4 @@ yarn-error.log*
 /.cursor/
 /.gemini/
 /.impeccable/hook.cache.json
+/dist-demo/

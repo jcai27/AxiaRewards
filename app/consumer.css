@@ -1,31 +1,44 @@
-/* Consumer site: visible outlines, readable text, clearly separated sections.
+/* Consumer site in the Axia by Qcells visual language: Poppins, black on white, navy actions,
+   teal accents, visible outlines and clearly separated sections.
    Scoped to .consumer-app so it overrides globals.css at every breakpoint. */
 :root{
-  --cx-ink:#221b31;--cx-text-2:#433c52;--cx-text-3:#5c5569;
-  --cx-brand:#4815a5;--cx-brand-soft:#f1ebfb;--cx-surface:#fff;--cx-subtle:#f6f5f9;
-  --cx-line:#cbc7d5;--cx-line-strong:#9b97a8;--cx-divider:#dad7e2;
+  --cx-ink:#0f1115;--cx-text-2:#3d4250;--cx-text-3:#5b6070;
+  --cx-brand:#001c77;--cx-brand-hover:#00145a;--cx-brand-soft:#e8ecf8;--cx-teal:#00c6c1;--cx-teal-soft:#dcf7f6;
+  --cx-surface:#fff;--cx-subtle:#f2f2f2;--cx-cream:#f2f0ea;
+  --cx-line:#c8cbd3;--cx-line-strong:#9aa0ad;--cx-divider:#d9dbe1;
 }
 
-.consumer-app{color:var(--cx-ink)}
+.consumer-app{color:var(--cx-ink);font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif}
+.consumer-app :is(h1,h2,h3,h4,button,input,select,textarea){font-family:inherit}
+.consumer-app :is(h1,h2,h3){font-weight:500;letter-spacing:-.01em;color:var(--cx-ink)}
+.consumer-app .logo-button .logo-img{height:46px;width:auto;display:block}
+.consumer-app .button{border-radius:8px;background:var(--cx-brand);border-color:var(--cx-brand);font-weight:500}
+.consumer-app .button:hover:not(:disabled){background:var(--cx-brand-hover)}
+.consumer-app .button.secondary{background:#fff}
+.consumer-app .button.secondary:hover:not(:disabled){background:var(--cx-brand-soft)}
+.consumer-app .site-header nav>.nav-cta{border-radius:8px;background:var(--cx-brand);border:1px solid var(--cx-brand);color:#fff;font-weight:500;font-size:14px;padding:12px 22px}
+.consumer-app .site-header nav>.nav-cta:hover{background:var(--cx-brand-hover)}
+.consumer-app :is(.panel,.wizard-card,.track-card,.track-result,.contact-form,.option-button,.reward-options>label,.resource-sidebar>button,.resource-aside-note,.notice-card,.tracking-result){border-radius:12px}
+.consumer-app :is(input,select,textarea){border-radius:8px}
 .consumer-app :is(input,select,textarea){border:1px solid var(--cx-line-strong);color:var(--cx-ink);font-size:15px}
 .consumer-app :is(input,select,textarea):hover{border-color:#7f7a8e}
-.consumer-app :is(input,select,textarea):focus{border-color:var(--cx-brand)!important;box-shadow:0 0 0 3px #4815a52b}
+.consumer-app :is(input,select,textarea):focus{border-color:var(--cx-brand)!important;box-shadow:0 0 0 3px #001c772b}
 .consumer-app :is(input,textarea)::placeholder{color:#7c768a}
 .consumer-app :is(button,a,summary,[role=button]):focus-visible{outline:2px solid var(--cx-brand);outline-offset:3px}
 .consumer-app .site-header{border-bottom:1px solid var(--cx-divider)}
 .consumer-app .site-header nav>button,.consumer-app .nav-menu>button{color:var(--cx-text-2)}
-.consumer-app .dropdown{border:1px solid var(--cx-line);box-shadow:0 8px 24px #1b172626}
+.consumer-app .dropdown{border:1px solid var(--cx-line);box-shadow:0 8px 24px #171a2626}
 
 /* Shared building blocks */
 .consumer-app .panel{border:1px solid var(--cx-line);box-shadow:none}
 .consumer-app .button.secondary{border-color:var(--cx-line-strong);color:var(--cx-brand)}
-.consumer-app .page-heading h1{font-size:28px;font-weight:700;color:var(--cx-ink);letter-spacing:-.02em;line-height:1.25}
+.consumer-app .page-heading h1{font-size:32px;font-weight:500;color:var(--cx-ink);letter-spacing:-.01em;line-height:1.25}
 .consumer-app .page-heading p{font-size:15px;color:var(--cx-text-3);margin:6px 0 0}
 .consumer-app .field>span{font-size:14px;font-weight:600;color:var(--cx-text-2)}
 .consumer-app .field em{color:#ae2216}
 .consumer-app .form-note{font-size:13.5px;color:var(--cx-text-3)}
 .consumer-app .eyebrow,.consumer-app .section-kicker,.consumer-app .wizard-step{font-size:12px;letter-spacing:.12em}
-.consumer-app .section-kicker,.consumer-app .wizard-step{color:#5b3d86}
+.consumer-app .section-kicker,.consumer-app .wizard-step{color:#3b4d88}
 .consumer-app .text-button,.consumer-app .inline-link{color:var(--cx-brand)}
 .consumer-app .alert.error{border:1px solid #e4a59e;color:#9c1f14;font-size:14px}
 .consumer-app .tracking-link{font-size:14px;color:var(--cx-brand)}
@@ -34,12 +47,12 @@
 .consumer-app .button{font-size:14px}
 .consumer-app .hero-copy>p{font-size:16px;color:var(--cx-text-2);line-height:1.6}
 .consumer-app .hero-trust{font-size:13px;color:var(--cx-text-3)}
-.consumer-app .benefit-icon{color:var(--cx-brand);background:var(--cx-brand-soft);border:1px solid #d9cdf0}
+.consumer-app .benefit-icon{color:var(--cx-brand);background:var(--cx-brand-soft);border:1px solid #ccd5f1}
 .consumer-app .redeem-intro>p,.consumer-app .home-help p{font-size:15px;color:var(--cx-text-3)}
 .consumer-app .benefit-grid>div{border-top:1px solid var(--cx-line);padding-top:24px}
 .consumer-app .benefit-grid h3{color:var(--cx-ink);font-size:18px}
 .consumer-app .benefit-grid p{font-size:14.5px;color:var(--cx-text-3)}
-.consumer-app .step-label{font-size:11px;color:#6d5f86}
+.consumer-app .step-label{font-size:11px;color:#5e6887}
 .consumer-app .home-help{border-top:1px solid var(--cx-line)}
 .consumer-app .home-help h2{color:var(--cx-ink)}
 
@@ -56,9 +69,9 @@
 .consumer-app .wizard-progress i{background:var(--cx-line-strong)}
 .consumer-app .form-section-label{border-bottom:1px solid var(--cx-line);color:var(--cx-ink);font-size:16px}
 .consumer-app .wizard-wrap.wide .form-section,.consumer-app .wizard-wrap.wide .form-actions{border-top:1px solid var(--cx-line)}
-.consumer-app .banner-inner>p{font-size:15.5px;color:#ece7f5;line-height:1.6}
-.consumer-app .banner-inner .eyebrow{color:#e2d8f5}
-.consumer-app .form-section-label>span{font-size:13px;color:#6d5f86}
+.consumer-app .banner-inner>p{font-size:15.5px;color:#e7eaf5;line-height:1.6}
+.consumer-app .banner-inner .eyebrow{color:#d7def6}
+.consumer-app .form-section-label>span{font-size:13px;color:#5e6887}
 .consumer-app .option-button{border:1px solid var(--cx-line-strong)}
 .consumer-app .option-button:hover{border-color:var(--cx-brand);background:var(--cx-brand-soft)}
 .consumer-app .option-button b{color:var(--cx-ink);font-size:16px}
@@ -115,7 +128,7 @@
 .consumer-app .contact-info>div{border-bottom:1px solid var(--cx-line)}
 .consumer-app .contact-info h3{color:var(--cx-ink);font-weight:600}
 .consumer-app .contact-info p{font-size:14.5px;color:var(--cx-text-3)}
-.consumer-app .contact-info .section-kicker{font-size:12px;color:#5b3d86}
+.consumer-app .contact-info .section-kicker{font-size:12px;color:#3b4d88}
 .consumer-app .contact-info .benefit-icon{color:var(--cx-brand);background:var(--cx-brand-soft)}
 .consumer-app .phone-link{color:var(--cx-brand)}
 .consumer-app .contact-info .text-button{font-size:14px;color:var(--cx-brand)}
@@ -129,10 +142,10 @@
 .consumer-app .privacy-page p{font-size:15px;color:var(--cx-text-2)}
 
 /* Footer */
-.consumer-app .consumer-footer{color:#cfc9da;border-top:1px solid #000}
+.consumer-app .consumer-footer{color:#c9cdda;border-top:1px solid #000}
 .consumer-app .consumer-footer>div,.consumer-app .consumer-footer>div>button,.consumer-app .consumer-footer b{font-size:12px;letter-spacing:.06em}
 .consumer-app .consumer-footer b{color:#fff}
-.consumer-app .consumer-footer .admin-entry{font-size:12px;color:#cfc9da}
+.consumer-app .consumer-footer .admin-entry{font-size:12px;color:#c9cdda}
 
 @media (min-width:1101px){
   .consumer-app .site-header nav>button,.consumer-app .nav-menu>button{font-size:14px}
@@ -143,3 +156,12 @@
   .consumer-app .resource-sidebar>button{flex:1 1 auto;margin:0;font-size:14px;padding:10px 12px}
   .consumer-app .consumer-footer>div{flex-direction:column;gap:8px}
 }
+
+/* Axia hero treatment: black headline, navy accent line; logo sizes */
+.consumer-app .hero-copy h1{color:var(--cx-ink);font-weight:500}
+.consumer-app .hero-copy h1 span{color:var(--cx-brand)}
+.consumer-app .hero-copy .eyebrow{color:var(--cx-brand)}
+.consumer-app .visa-card .logo-img{height:30px;width:auto;display:block}
+.consumer-app .visa-card.small .logo-img{height:24px}
+.consumer-app .redeem-intro>h2,.consumer-app .home-help h2{color:var(--cx-ink);font-weight:500}
+.consumer-app .home-help{background:var(--cx-cream);border:0;border-radius:24px;padding:40px 48px;margin-top:20px}

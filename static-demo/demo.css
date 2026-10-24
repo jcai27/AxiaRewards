@@ -1,0 +1,22 @@
+/* Browser-only demo additions: the demo notice and the demo sign-in screen. */
+.demo-notice{position:fixed;left:16px;bottom:16px;z-index:300;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);background:#fff;border:1px solid #9aa0ad;border-radius:10px;padding:8px 8px 8px 14px;font:13px/1.4 'Poppins',system-ui,sans-serif;color:#3d4250;box-shadow:0 6px 20px #0f111526}
+.demo-notice b{color:#001c77;font-weight:600;margin-right:4px}
+.demo-notice button{border:1px solid #9aa0ad;background:#fff;border-radius:8px;padding:6px 10px;font:inherit;font-weight:500;color:#001c77;cursor:pointer;white-space:nowrap}
+.demo-notice button:hover{background:#e8ecf8}
+@media print{.demo-notice{display:none}}
+
+.demo-signin{min-height:100vh;display:grid;place-items:center;padding:16px;background:#f2f2f2;font-family:'Poppins',system-ui,sans-serif;color:#0f1115}
+.demo-signin-card{width:100%;max-width:400px;background:#fff;border:1px solid #c8cbd3;border-radius:12px;padding:32px;display:flex;flex-direction:column}
+.demo-signin-brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.demo-signin-brand img{height:42px;width:auto}
+.demo-signin-brand span{font-size:12px;font-weight:500;color:#001c77;background:#e8ecf8;padding:3px 8px;border-radius:6px}
+.demo-signin h1{font-size:22px;font-weight:500;margin:0}
+.demo-signin p{margin:4px 0 16px;color:#5b6070;font-size:14px}
+.demo-signin-hint{background:#dcf7f6;border:1px solid #8fe3e0;border-radius:8px;padding:10px 12px;font-size:13.5px;color:#0f1115;margin-bottom:16px}
+.demo-signin-error{background:#fbe9e7;border:1px solid #f0c9c4;color:#ae2216;border-radius:8px;padding:8px 10px;font-size:13.5px;margin-bottom:12px}
+.demo-signin label{font-size:13.5px;font-weight:500;color:#3d4250;margin:0 0 6px}
+.demo-signin input{height:42px;border:1px solid #9aa0ad;border-radius:8px;padding:0 12px;font:inherit;font-size:15px;margin-bottom:14px}
+.demo-signin input:focus{outline:0;border-color:#001c77;box-shadow:0 0 0 3px #001c7722}
+.demo-signin button{height:44px;border:0;border-radius:8px;background:#001c77;color:#fff;font:inherit;font-weight:500;cursor:pointer;margin-top:4px}
+.demo-signin button:hover{background:#00145a}
+.demo-signin a{margin-top:16px;text-align:center;color:#001c77;font-size:14px}

@@ -5,6 +5,7 @@ import {ArrowRight,Ban,CalendarDays,Check,CheckCircle2,ChevronLeft,ChevronRight,
 import {money,declineReasons,rebateFields,fieldKey,csv,type Row} from "../lib/program";
 import {decisionContext,evaluate,relatedClaims,recommendationLabel,RULES,type Check as EngineCheck,type Evaluation,type Recommendation} from "../lib/decision";
 import {invoiceable,invoiceCsv,invoiceTransitions,PAYMENT_TERMS_DAYS} from "../lib/invoice";
+import {withBase} from "../lib/base-path";
 import {api,dateLabel,download,Empty,Modal,Pagination,Pill,Title} from "./admin-ui";
 
 type Go=(p:string)=>void;
@@ -317,7 +318,7 @@ export function InvoicePage({number,data,go,reload,notify,readOnly}:PageProps&{n
     </div>
     <article className={`invoice-doc status-${invoice.status.toLowerCase()}`} aria-label={`Invoice ${invoice.invoice_number}`}>
       <header className="inv-head">
-        <div><span className="inv-wordmark">axia<small>by Qcells</small></span><p><b>{invoice.from.name}</b><br/>{invoice.from.detail}</p></div>
+        <div><img className="inv-logo" src={withBase("/axia-logo.png")} alt="Axia by Qcells" width={724} height={312}/><p><b>{invoice.from.name}</b><br/>{invoice.from.detail}</p></div>
         <div className="inv-title"><h1>Invoice</h1><Pill status={invoice.status}/></div>
       </header>
       <section className="inv-meta">

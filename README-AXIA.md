@@ -72,3 +72,15 @@ No email delivery provider, cardholder URL, support phone numbers, or approved l
 Solar sunset photograph by [Michael Pointner on Pexels](https://www.pexels.com/photo/solar-panels-at-sunset-18316988/). Wordmark treatment and illustrative Visa card are rendered with HTML/CSS; card details are fictional. Brand and program names follow the supplied brief.
 
 See `README.md` for the underlying Sites starter and hosting lifecycle.
+
+## Browser-only demo (GitHub Pages)
+
+`static-demo/` builds a static copy of the portal that needs no server. The real API handlers in `app/api/program/route.ts` run in the page against SQLite compiled to WebAssembly (sql.js), and the database persists in the visitor's browser (IndexedDB). Every visitor gets an independent copy of the fictional demo data. The admin sign-in is `demo` / `demo`; it is a demo convenience, not access control. A "Reset demo" button erases the browser copy.
+
+```powershell
+npm run build:demo     # writes dist-demo/ (served under /AxiaRewards/)
+npm run preview:demo   # http://localhost:4173/AxiaRewards/
+$env:DEMO_URL='http://localhost:4173/AxiaRewards'; node tests/demo-static.mjs
+```
+
+Publish by pushing the contents of `dist-demo/` to the `gh-pages` branch. GitHub Pages serves `404.html` (a copy of `index.html`) for deep links.
