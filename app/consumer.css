@@ -56,6 +56,11 @@
 .consumer-app .home-help{border-top:1px solid var(--cx-line)}
 .consumer-app .home-help h2{color:var(--cx-ink)}
 
+/* Shared dark banners need explicit light text over the photograph. */
+.consumer-app .banner-inner>h1{color:var(--cx-surface)}
+.consumer-app .banner-inner>p{font-size:15.5px;color:#e7eaf5;line-height:1.6}
+.consumer-app .banner-inner .eyebrow{color:#d7def6}
+
 /* Redeem wizard */
 .consumer-app .wizard-card{border:1px solid var(--cx-line)}
 .consumer-app .wizard-card h2{color:var(--cx-ink)}
@@ -69,8 +74,6 @@
 .consumer-app .wizard-progress i{background:var(--cx-line-strong)}
 .consumer-app .form-section-label{border-bottom:1px solid var(--cx-line);color:var(--cx-ink);font-size:16px}
 .consumer-app .wizard-wrap.wide .form-section,.consumer-app .wizard-wrap.wide .form-actions{border-top:1px solid var(--cx-line)}
-.consumer-app .banner-inner>p{font-size:15.5px;color:#e7eaf5;line-height:1.6}
-.consumer-app .banner-inner .eyebrow{color:#d7def6}
 .consumer-app .form-section-label>span{font-size:13px;color:#5e6887}
 .consumer-app .option-button{border:1px solid var(--cx-line-strong)}
 .consumer-app .option-button:hover{border-color:var(--cx-brand);background:var(--cx-brand-soft)}
