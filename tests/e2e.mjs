@@ -1,0 +1,46 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const base=process.env.TEST_URL||'http://127.0.0.1:5173';
+assert.match(new URL(base).hostname,/^(127\.0\.0\.1|localhost)$/,'Run these mutating checks only against a local database.');
+const executablePath=process.env.CHROME_PATH||(process.platform==='win32'?'C:/Program Files/Google/Chrome/Application/chrome.exe':undefined);
+const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
+const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});
+const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const runId=Date.now();const email=`qa-${runId}@example.com`;let checks=0;
+function pass(name){checks++;console.log(`PASS ${name}`);}
+async function post(body,status=200){const r=await context.request.post(base+'/api/program',{data:body});assert.equal(r.status(),status,await r.text());return r.json();}
+async function visit(path,heading){await page.goto(base+path);if(heading)await page.getByRole('heading',{name:heading,exact:true}).waitFor();}
+try{
+  assert.equal((await context.request.get(base+'/api/program')).status(),401);
+  await post({action:'review',ids:['rebate-51'],status:'APPROVED'},401);pass('anonymous admin reads and writes are rejected');
+  await visit('/');await page.getByRole('button',{name:'Redeem your rebate',exact:true}).click();await page.getByRole('button',{name:/Not yet/}).click();
+  await page.getByRole('heading',{name:'Register your rebate.',exact:true}).waitFor();
+  const fields={first_name:'Solar',last_name:`Test ${runId}`,email,phone:'(555) 010-7788',address1:'123 Sunshine Way',city:'San Diego',zip:'92101',date_of_sale:'2026-09-01',sales_rep_name:'Jordan Lee',certified_by:'Solar Test'};
+  for(const [name,value] of Object.entries(fields))await page.locator(`[name="${name}"]`).fill(value);
+  await page.locator('[name="state"]').selectOption('CA');await page.locator('[name="rebate_code"]').selectOption('AxiaSummer2026');await page.locator('[name="financier"]').selectOption('Cash');await page.locator('[name="certified"]').check();
+  await page.getByRole('button',{name:'Register my rebate'}).click();await page.getByRole('heading',{name:"You're registered!",exact:true}).waitFor();
+  const tracking=await page.locator('.tracking-result strong').innerText();assert.match(tracking,/^\d{10}$/);pass('pre-installation wizard persists a registration and returns a tracking number');
+  const initial=await post({action:'track',tracking_number:tracking});assert.equal(initial.status,'REBATE_REGISTRATION');assert.equal(initial.amount,1500);assert.equal(initial.email,undefined);pass('public tracking returns status without customer contact data');
+  await visit('/finalize-rebate','Finalize my rebate.');await page.locator('[name="tracking_number"]').fill(tracking);await page.locator('[name="email"]').fill(email);await page.locator('[name="pto_date"]').fill('2026-10-01');await page.getByRole('button',{name:'Submit',exact:true}).click();await page.getByRole('heading',{name:"You're on your way to a reward.",exact:true}).waitFor();assert.equal((await post({action:'track',tracking_number:tracking})).status,'PENDING');pass('registration finalization verifies email and PTO and moves to pending');
+  await post({action:'submit-rebate',data:{...fields,state:'CA',rebate_code:'AxiaSummer2026',dealer_name:'Axia By QCells',financier:'Cash',reward_type:'Virtual',certified:true,preinstallation:true}},409);pass('duplicate purchases are rejected');
+  await visit('/track-payment',"Where's my reward?");await page.locator('[name="tracking_number"]').fill(tracking);await page.getByRole('button',{name:'Track payment',exact:true}).click();await page.locator('.track-result .pill.pending').waitFor();pass('tracking UI renders the saved payment status');
+  await page.goto(base+'/signin-with-chatgpt?return_to=%2Fhome');await page.getByRole('heading',{name:'Program at a glance',exact:true}).waitFor();
+  await page.getByLabel('Dashboard year').selectOption('2025');assert.equal(await page.locator('.submissions .number-row strong').innerText(),'0');await page.getByLabel('Dashboard year').selectOption('2026');pass('dashboard aggregates change with selected year');
+  await visit('/pending-rebates','Pending Rebates');await page.getByRole('textbox',{name:'Search rebates',exact:true}).fill(tracking);await page.getByRole('button',{name:'Search',exact:true}).click();await page.getByRole('checkbox',{name:`Select rebate ${tracking}`,exact:true}).check();
+  const adminData=await (await context.request.get(base+'/api/program')).json();const record=adminData.rebates.find(r=>r.tracking_number===tracking);
+  await post({action:'review',ids:[record.id],status:'DECLINED',reasons:{}},400);pass('decline requires a valid reason on the server');
+  await page.getByRole('button',{name:'Approve',exact:true}).click();await page.getByRole('button',{name:'Confirm approval',exact:true}).click();await page.locator('dialog').waitFor({state:'detached'});assert.equal((await post({action:'track',tracking_number:tracking})).status,'APPROVED');pass('bulk approval persists and updates public tracking');
+  await post({action:'review',ids:[record.id],status:'DECLINED',reasons:{[record.id]:'Duplicate rebate submitted'}},409);pass('a stale review cannot overwrite a completed decision');
+  await visit('/rebate-report','All Status Rebate Report');await page.getByLabel('Select all columns').uncheck();assert.equal(await page.getByRole('button',{name:'Export report',exact:true}).isDisabled(),true);await page.getByLabel('First Name',{exact:true}).check();await page.getByLabel('Status',{exact:true}).check();const downloadEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Export report',exact:true}).click();const report=await downloadEvent;const content=fs.readFileSync(await report.path(),'utf8');assert.match(content,/"First Name","Status"/);assert.ok(!content.includes('Email Address'));pass('CSV report respects selected columns and downloads records');
+  await visit('/referee-report','Referee Report');await page.getByLabel('Date Submitted',{exact:true}).waitFor();await page.getByLabel('Sales Rep Name',{exact:true}).waitFor();pass('referee report includes submission dates and sales representative');
+  await visit('/rebate-code-uploader','Rebate Code Uploader');await page.locator('input[type=file]').setInputFiles({name:'test-codes.csv',mimeType:'text/csv',buffer:Buffer.from(`rebate_code,rebate_amount,active\r\nQA-${runId},825,true`)});await page.getByRole('button',{name:'Import 1 records',exact:true}).click();await page.getByText(`QA-${runId}`,{exact:true}).waitFor();pass('CSV import previews, validates, and persists a rebate code');
+  await post({action:'upload',kind:'codes',csv:'rebate_code,rebate_amount,active\r\nINVALID,-1,true'},400);pass('invalid CSV data is rejected without saving');
+  await visit('/referral-payments','Referral Payments');await page.getByRole('button',{name:/Referee Payments/}).click();await page.getByRole('button',{name:'3000000000',exact:true}).waitFor();assert.equal((await post({action:'track',tracking_number:'3000000000'})).amount,500);pass('referee tab and tracking use the referee tracking number and amount');
+  await post({action:'update-referral',id:'referral-1',status:'SHIPPED',reward_type:'Physical'},400);pass('referral workflow rejects skipped payment states');
+  await visit('/add-user','Add Administrator');await page.locator('[name=name]').fill('QA Team');await page.locator('[name=email]').fill(`team-${runId}@example.com`);await page.locator('[name=role]').selectOption('Client View Only');await page.getByRole('button',{name:'Add user',exact:true}).click();await page.getByRole('heading',{name:'Invitation ready',exact:true}).waitFor();assert.match(await page.getByLabel('Invitation link').inputValue(),/\/accept-invite\?token=[a-f0-9]{64}$/);await page.getByRole('button',{name:'Close dialog',exact:true}).click();pass('administrator creation produces a queued, expiring invitation');
+  await visit('/contact-us','Send us a message.');await page.locator('[name=subject]').selectOption('Rebate question');await page.locator('[name=name]').fill('Solar Test');await page.locator('[name=email]').fill(email);await page.locator('[name=message]').fill('Please help me review my solar rebate status.');await page.getByRole('button',{name:'Submit message'}).click();await page.getByRole('heading',{name:'Your request is saved.',exact:true}).waitFor();pass('contact form saves a support request and returns a reference');
+  for(const route of ['/','/redeem-rebate','/home','/pending-rebates','/rebate-report','/users-list','/rebate-faqs','/contact-us']){await page.setViewportSize({width:390,height:844});await page.goto(base+route);await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow on ${route}`);}
+  pass('representative consumer and admin pages fit a 390px mobile viewport');assert.deepEqual(errors,[]);pass('no browser JavaScript errors');
+  console.log(`\n${checks} end-to-end checks passed.`);
+} finally {await browser.close();}
