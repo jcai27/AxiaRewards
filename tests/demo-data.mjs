@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import {demoScenarios,demoVersion} from '../lib/demo-scenarios.ts';
+import {programAnalytics} from '../lib/analytics.ts';
+const d=demoScenarios();
+assert.deepEqual(Object.fromEntries(Object.entries(d).map(([k,v])=>[k,v.length])),{customers:60,users:12,rebates:72,referrals:36,payments:94,rewards:60,fraud:18,report_runs:12,codes:3,campaigns:2});
+assert.deepEqual(d,demoScenarios(),'Fixture generation must be deterministic.');
+const ids=Object.values(d).flatMap(list=>list.map(r=>r.id));assert.equal(new Set(ids).size,ids.length);
+const tracking=[...d.rebates.map(r=>r.tracking_number),...d.referrals.flatMap(r=>[r.tracking_number,r.referee_tracking_number])];assert.equal(new Set(tracking).size,tracking.length);tracking.forEach(t=>assert.match(t,/^\d{10}$/));
+const customerIds=new Set(d.customers.map(c=>c.id));const payments=new Map(d.payments.map(p=>[p.id,p]));
+for(const r of d.rebates){assert.ok(customerIds.has(r.customer_id));assert.ok(r.date_submitted>=r.date_of_sale);if(r.date_funded)assert.ok(r.date_funded>=r.date_approved_declined);if(r.date_shipped)assert.ok(r.date_shipped>=r.date_funded);assert.equal(r.demo_version,demoVersion);}
+for(const r of d.referrals){assert.ok(customerIds.has(r.customer_id));assert.ok(customerIds.has(r.referee_customer_id));assert.notEqual(r.customer_id,r.referee_customer_id);}
+for(const p of d.payments){assert.ok(customerIds.has(p.customer_id));const related=(p.source==='Rebate'?d.rebates:d.referrals).find(r=>r.id===p.related_id);assert.ok(related);assert.ok(p.amount>0);if(p.status==='PAID'){assert.ok(p.date_paid);assert.ok(related.date_funded||related.funded_date);}if(p.status==='ON_HOLD')assert.equal(related.payment_hold,true);}
+for(const r of d.rewards){const p=payments.get(r.payment_id);assert.ok(p);assert.equal(p.status,'PAID');assert.equal(r.issued_amount,p.amount);assert.equal(r.customer_id,p.customer_id);assert.ok(r.remaining_balance>=0&&r.remaining_balance<=r.issued_amount);assert.match(r.last_four,/^\d{4}$/);assert.equal(r.card_number,undefined);assert.equal(r.cvv,undefined);}
+for(const f of d.fraud){const r=d.rebates.find(r=>r.id===f.rebate_id);assert.ok(r);assert.equal(r.fraud_case_id,f.id);assert.ok(customerIds.has(f.customer_id));if(f.status==='CLEARED')assert.equal(f.payment_hold,false);if(f.case_type==='Duplicate claim'){const related=d.rebates.find(r=>r.tracking_number===f.related_tracking_number);assert.equal(related.invoice_number,r.invoice_number);}if(f.status==='CONFIRMED')assert.equal(r.status,'DECLINED');}
+assert.deepEqual(new Set(d.users.map(u=>u.department)),new Set(['Program Administration','Rebate Operations','Payments & Rewards','Fraud & Risk','Reporting & Analytics','Dealer Support','Referral Operations']));
+d.users.forEach(u=>{assert.equal(u.sample,true);assert.equal(u.user_id,undefined);assert.match(u.email,/@example\.com$/);});
+assert.equal(new Set(d.payments.map(p=>p.status)).size,6);assert.equal(new Set(d.rewards.map(r=>r.status)).size,7);
+const a=programAnalytics(d,'2026'),old=programAnalytics(d,'2025'),empty=programAnalytics(d,'2024');assert.equal(a.rebates.length,48);assert.equal(old.rebates.length,24);assert.equal(empty.rebates.length,0);assert.equal(a.monthly.reduce((s,m)=>s+m.submissions,0),48);assert.equal(a.dealers.reduce((s,r)=>s+r.submissions,0),48);assert.ok(a.approvalRate>=0&&a.approvalRate<=100);assert.ok(a.averageReviewDays>=0);assert.equal(a.paidAmount,a.payments.filter(p=>p.status==='PAID').reduce((s,p)=>s+p.amount,0));for(const cohort of [a,old])assert.equal(new Set(cohort.fraud.map(f=>f.status)).size,4,'Both years should have varied case outcomes.');
+console.log('PASS deterministic demo counts, unique IDs/tracking, customer relationships, payment/reward reconciliation, fraud evidence and holds, sample-only staff, and 2025/2026 analytics.');

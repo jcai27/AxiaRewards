@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { seedData, declineReasons, parseCSV, type Row } from "../../../lib/program";
+import { demoScenarios, demoVersion } from "../../../lib/demo-scenarios";
 
 export const dynamic = "force-dynamic";
 const db = () => { if(!env.DB) throw new Error("Program database is not configured.");return env.DB; };
@@ -10,13 +11,20 @@ const ok=(data:unknown,status=200)=>Response.json(data,{status,headers:{"Cache-C
 const fail=(message:string,status=400)=>Object.assign(new Error(message),{status});
 async function rows(kind:string):Promise<Row[]> {const r=await db().prepare("SELECT data FROM records WHERE kind = ?").bind(kind).all<{data:string}>();return r.results.map(x=>JSON.parse(x.data));}
 async function row(id:string,kind:string):Promise<Row|undefined>{const r=await db().prepare("SELECT data FROM records WHERE id=? AND kind=?").bind(id,kind).first<{data:string}>();return r?JSON.parse(r.data):undefined;}
-function statement(kind:string,r:Row,replace=true){return db().prepare(`${replace?"INSERT":"INSERT OR IGNORE"} INTO records (id,kind,data,tracking_number,purchase_key) VALUES (?,?,?,?,?)${replace?" ON CONFLICT(id) DO UPDATE SET data=excluded.data,tracking_number=excluded.tracking_number,purchase_key=excluded.purchase_key WHERE records.kind=excluded.kind":""}`).bind(r.id,kind,JSON.stringify(r),r.tracking_number||null,kind==="rebates"?`${r.email.toLowerCase()}|${r.rebate_code}|${r.date_of_sale}`:null);}
+function statement(kind:string,r:Row,replace=true){return db().prepare(`${replace?"INSERT":"INSERT OR IGNORE"} INTO records (id,kind,data,tracking_number,purchase_key) VALUES (?,?,?,?,?)${replace?" ON CONFLICT(id) DO UPDATE SET data=excluded.data,tracking_number=excluded.tracking_number,purchase_key=excluded.purchase_key WHERE records.kind=excluded.kind":""}`).bind(r.id,kind,JSON.stringify(r),["rebates","referrals"].includes(kind)?r.tracking_number||null:null,kind==="rebates"?`${r.email.toLowerCase()}|${r.rebate_code}|${r.date_of_sale}`:null);}
 async function log(actor:string,action:string){await db().prepare("INSERT INTO audit (id,actor,action,created) VALUES (?,?,?,?)").bind(crypto.randomUUID(),actor,action,new Date().toISOString()).run();}
 async function seed(){
-  if(await db().prepare("SELECT value FROM settings WHERE key='seed_v1'").first())return;
-  const data=seedData();const statements=Object.entries(data).flatMap(([kind,list])=>list.map(r=>statement(kind,r,false)));
-  for(let i=0;i<statements.length;i+=80)await db().batch(statements.slice(i,i+80));
-  await db().prepare("INSERT OR IGNORE INTO settings (key,value) VALUES ('seed_v1','complete')").run();
+  if(!await db().prepare("SELECT value FROM settings WHERE key='seed_v1'").first()){
+    const data=seedData();const statements=Object.entries(data).flatMap(([kind,list])=>list.map(r=>statement(kind,r,false)));
+    for(let i=0;i<statements.length;i+=80)await db().batch(statements.slice(i,i+80));
+    await db().prepare("INSERT OR IGNORE INTO settings (key,value) VALUES ('seed_v1','complete')").run();
+  }
+  if(!await db().prepare("SELECT value FROM settings WHERE key=?").bind(demoVersion).first()){
+    const data=demoScenarios();const statements=Object.entries(data).flatMap(([kind,list])=>list.map(r=>statement(kind,r,false)));
+    for(let i=0;i<statements.length;i+=80)await db().batch(statements.slice(i,i+80));
+    const summary=JSON.stringify({version:demoVersion,counts:Object.fromEntries(Object.entries(data).map(([kind,list])=>[kind,list.length]))});
+    await db().prepare("INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)").bind(demoVersion,summary).run();
+  }
 }
 async function admin(write=false){
   const user=await getChatGPTUser();if(!user)throw fail("Sign in to access the administrator module.",401);
@@ -49,8 +57,8 @@ async function queueInvite(user:Row,origin:string){
 export async function GET(request:Request){try{
   await seed();const url=new URL(request.url);
   if(url.searchParams.get("view")==="public") {const config=env as unknown as Record<string,string>;return ok({codes:(await rows("codes")).filter(c=>c.active),cardholder_url:config.CARDHOLDER_URL||null,support_phone:config.SUPPORT_PHONE||null,cardholder_phone:config.CARDHOLDER_PHONE||null});}
-  const currentUser=await admin();const [rebates,referrals,users,codes,campaigns]=await Promise.all([rows("rebates"),rows("referrals"),rows("users"),rows("codes"),rows("campaigns")]);
-  return ok({rebates,referrals,users,codes,campaigns,currentUser});
+  const currentUser=await admin();const [rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs]=await Promise.all([rows("rebates"),rows("referrals"),rows("users"),rows("codes"),rows("campaigns"),rows("customers"),rows("payments"),rows("rewards"),rows("fraud"),rows("report_runs")]);
+  return ok({rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs,currentUser});
 }catch(e){return handle(e);}}
 export async function POST(request:Request){try{
   const origin=request.headers.get("origin");if(origin&&origin!==new URL(request.url).origin)throw fail("Request origin is not allowed.",403);
@@ -95,6 +103,7 @@ export async function POST(request:Request){try{
     if(new Set(ids).size!==ids.length)throw fail("Select distinct requests.");
     const selected=await Promise.all(ids.map(id=>row(id,"rebates")));
     if(selected.some(r=>!r||r.status!=="PENDING"))throw fail("One or more requests are no longer pending. Refresh the list.",409);
+    if(status==="APPROVED"&&selected.some(r=>r?.payment_hold))throw fail("A selected request has an active fraud-review hold and cannot be approved.",409);
     if(status==="DECLINED"&&selected.some(r=>!declineReasons.includes(body.reasons?.[r!.id])))throw fail("Choose a decline reason for every selected rebate.");
     const updates=selected.map(r=>{const old=JSON.stringify(r);const next={...r,status,date_approved_declined:today(),approved_declined_by:actor.name,decline_reason:status==="DECLINED"?body.reasons[r!.id]:""};return db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(next),r!.id,old);});
     const results=await db().batch(updates);const count=results.reduce((n,r)=>n+(r.meta.changes||0),0);await log(actor.email,`${status}: ${count} rebates`);return ok({count});

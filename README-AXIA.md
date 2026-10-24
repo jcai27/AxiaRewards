@@ -18,6 +18,20 @@ Migrations are schema-only. The API seeds fictional data once, using idempotent 
 
 Sample tracking: `1000000051` (rebate), `2000000000` (referrer), `3000000000` (referee).
 
+## Expanded solar demo scenarios
+
+The additive `solar-scenarios-v2` seed runs once on the next API request. It inserts records with stable IDs and never replaces existing records or administrator changes. It adds 60 linked solar customers, 72 rebates, 36 referrals, 12 operational staff profiles, 94 payment ledger entries, 60 reward cards, 18 fraud-review cases, 12 illustrative report runs, 3 rebate codes, and 2 campaigns. Combined with the original seed, a clean database has 987 rebates, 56 referrals and 22 sample staff accounts. Existing user-created records are additional to these counts.
+
+Explore `/customers`, `/payments`, `/fraud-review` and `/program-analytics`, or use the dashboard's program-data links. Staff specialties include rebates, referral operations, payments, fraud and risk, reporting, and dealer support. The customer profiles connect installation sizes, panel and battery models, dealer details, rebates, referral rewards, payments and card histories. Product model names and addresses are fictional. The 2025 and 2026 cohorts provide reporting comparisons.
+
+Payments cover scheduled, processing, paid, failed, returned and on-hold states. Reward cards cover issued, activated, partially spent, shipped, expired, reissued and blocked scenarios; only masked last-four digits are stored. The seed sends no invitations, initiates no payments and issues no cards. Sample staff profiles cannot authenticate or gain real administrator access.
+
+Fraud scenarios include repeated invoice numbers and module serials, installation/reward address mismatches, simulated submission velocity, inconsistent PTO dates and reward recipient mismatches. All cases and evidence are fictional fixtures, not the output of a working fraud detection service. Open fraud holds prevent approval of linked pending claims. Fraud details are restricted to administrator APIs; consumer tracking does not reveal these signals. Review pages provide inspection rather than case-resolution actions.
+
+Analytics calculate monthly submissions, dealer performance, approval rate, funding, review time and fraud outcomes from saved records. The connected demo payment ledger is a subset of the entire program; its settled-payment figure is labeled separately from total rebate funding. Historic example report runs are illustrative and do not claim downloadable artifacts exist. Existing report builders can export current data, including risk fields.
+
+`node tests/demo-data.mjs` validates deterministic counts, linked identities, payment/card reconciliation, fraud evidence and analytics. `node tests/demo-scenarios-e2e.mjs` checks the new pages, exports, record links, holds, mobile layouts, sample access and seed idempotency against the local development database.
+
 ## Features
 
 - Pre-installation registration, post-installation submission, email-verified PTO finalization, random 10-digit tracking, and duplicate purchase protection.

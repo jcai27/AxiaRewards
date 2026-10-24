@@ -13,7 +13,9 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "test:e2e": "node tests/e2e.mjs",
-    "test:roles": "node tests/roles.mjs"
+    "test:roles": "node tests/roles.mjs",
+    "test:demo": "node --experimental-strip-types tests/demo-data.mjs",
+    "test:scenarios": "node tests/demo-scenarios-e2e.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
