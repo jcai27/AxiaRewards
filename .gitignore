@@ -44,3 +44,8 @@ yarn-error.log*
 
 # OS metadata
 .DS_Store
+
+# Local editor and design-tool state
+/.cursor/
+/.gemini/
+/.impeccable/hook.cache.json

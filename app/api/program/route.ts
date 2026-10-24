@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { seedData, declineReasons, parseCSV, type Row } from "../../../lib/program";
 import { demoScenarios, demoVersion } from "../../../lib/demo-scenarios";
+import { decisionContext, evaluate, AUTO_APPROVER, ENGINE_VERSION, SUBMISSION_WINDOW_DAYS, type Evaluation } from "../../../lib/decision";
+import { invoiceable, invoiceLine, invoiceTotal, invoiceTransitions, INVOICE_FROM, INVOICE_TO, PAYMENT_TERMS_DAYS } from "../../../lib/invoice";
 
 export const dynamic = "force-dynamic";
 const db = () => { if(!env.DB) throw new Error("Program database is not configured.");return env.DB; };
@@ -25,7 +27,56 @@ async function seed(){
     const summary=JSON.stringify({version:demoVersion,counts:Object.fromEntries(Object.entries(data).map(([kind,list])=>[kind,list.length]))});
     await db().prepare("INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)").bind(demoVersion,summary).run();
   }
+  await repairSeedForDecisions();
 }
+const withoutInvoice=(r:Row)=>{const next={...r};delete next.program_invoice_id;delete next.program_invoice_number;return next;};
+const addDays=(d:string,n:number)=>new Date(Date.parse(d)+n*86400000).toISOString().slice(0,10);
+// The original synthetic pending rebates had incoherent dates and amounts, so every one failed the
+// decision engine. Rewrite them once into coherent claims with a deliberate mix of exceptions.
+// Only untouched seed records still PENDING are updated (compare-and-swap on the stored JSON).
+async function repairSeedForDecisions(){
+  if(await db().prepare("SELECT value FROM settings WHERE key='decision_demo_v1'").first())return;
+  const [all,codeRows]=await Promise.all([rows("rebates"),rows("codes")]);
+  const codes=new Map(codeRows.map(c=>[c.rebate_code,c])),byId=new Map(all.map(r=>[r.id,r]));
+  const updates=all.filter(r=>/^rebate-\d+$/.test(r.id)&&r.status==="PENDING").map(r=>{
+    const i=Number(r.id.slice(7))-1,old=JSON.stringify(r),next:Row={...r,financier:"Cash"};
+    next.pto_date=addDays(r.date_submitted,-(3+i%20));next.date_of_sale=addDays(next.pto_date,-(30+i%45));
+    next.rebate_amount=Number(codes.get(r.rebate_code)?.rebate_amount??r.rebate_amount);
+    if(i%13===0)next.rebate_amount+=250;
+    if(i%17===0){next.pto_date=addDays(r.date_submitted,-(SUBMISSION_WINDOW_DAYS+21));next.date_of_sale=addDays(next.pto_date,-40);}
+    if(i%29===0)next.financier="Personal check";
+    if(i%31===0)next.date_of_sale=addDays(r.date_submitted,9);
+    if(i%37===0)next.rebate_code="AxiaWinter2025";
+    const twin=i%43===0?byId.get(`rebate-${701+i%169}`):undefined;
+    if(twin)Object.assign(next,{address1:twin.address1,city:twin.city,state:twin.state,zip:twin.zip,rebate_code:twin.rebate_code,rebate_amount:Number(codes.get(twin.rebate_code)?.rebate_amount??next.rebate_amount)});
+    return db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(next),r.id,old);
+  });
+  for(let i=0;i<updates.length;i+=80)await db().batch(updates.slice(i,i+80));
+  await db().prepare("INSERT OR IGNORE INTO settings (key,value) VALUES ('decision_demo_v1',?)").bind(String(updates.length)).run();
+}
+async function engine(){const [rebates,codes,customers]=await Promise.all([rows("rebates"),rows("codes"),rows("customers")]);const ctx=decisionContext({rebates,codes,customers},today());return {rebates,run:(r:Row)=>evaluate(r,ctx)};}
+const setting=async(key:string)=>(await db().prepare("SELECT value FROM settings WHERE key=?").bind(key).first<{value:string}>())?.value;
+const putSetting=(key:string,value:string)=>db().prepare("INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key,value).run();
+const automationEnabled=async()=>(await setting("auto_approve"))!=="off";
+/** Approve every pending rebate (or just `ids`) that meets all thresholds. Never declines. */
+async function autoApprove(ids?:string[]){
+  const {rebates,run}=await engine();
+  const pending=rebates.filter(r=>r.status==="PENDING"&&(!ids||ids.includes(r.id)));
+  const tally={approved:0,review:0,decline:0};
+  const updates=pending.flatMap(r=>{
+    const ev=run(r);
+    if(ev.recommendation!=="APPROVE"||r.payment_hold){tally[ev.recommendation==="DECLINE"?"decline":"review"]++;return [];}
+    const next={...r,status:"APPROVED",date_approved_declined:today(),approved_declined_by:AUTO_APPROVER,decline_reason:"",decision:decisionRecord(ev,"auto","APPROVED",AUTO_APPROVER)};
+    return [db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(next),r.id,JSON.stringify(r))];
+  });
+  for(let i=0;i<updates.length;i+=80)tally.approved+=(await db().batch(updates.slice(i,i+80))).reduce((n,x)=>n+(x.meta.changes||0),0);
+  return tally;
+}
+const decisionRecord=(ev:Evaluation,source:"auto"|"engine"|"manual",final:string,actor:string)=>({
+  engine_version:ev.version,recommendation:ev.recommendation,source,decided_by:actor,decided_at:new Date().toISOString(),
+  agreed:ev.recommendation==="REVIEW"?null:(ev.recommendation==="APPROVE")===(final==="APPROVED"),
+  failed:ev.checks.filter(c=>c.status==="fail").map(c=>c.id),warned:ev.checks.filter(c=>c.status==="warn").map(c=>c.id),
+});
 async function admin(write=false){
   const user=await getChatGPTUser();if(!user)throw fail("Sign in to access the administrator module.",401);
   // Initial enrollment is restricted by the owner-private Sites access boundary.
@@ -57,8 +108,10 @@ async function queueInvite(user:Row,origin:string){
 export async function GET(request:Request){try{
   await seed();const url=new URL(request.url);
   if(url.searchParams.get("view")==="public") {const config=env as unknown as Record<string,string>;return ok({codes:(await rows("codes")).filter(c=>c.active),cardholder_url:config.CARDHOLDER_URL||null,support_phone:config.SUPPORT_PHONE||null,cardholder_phone:config.CARDHOLDER_PHONE||null});}
-  const currentUser=await admin();const [rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs]=await Promise.all([rows("rebates"),rows("referrals"),rows("users"),rows("codes"),rows("campaigns"),rows("customers"),rows("payments"),rows("rewards"),rows("fraud"),rows("report_runs")]);
-  return ok({rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs,currentUser});
+  const currentUser=await admin();const [rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs,invoices]=await Promise.all([rows("rebates"),rows("referrals"),rows("users"),rows("codes"),rows("campaigns"),rows("customers"),rows("payments"),rows("rewards"),rows("fraud"),rows("report_runs"),rows("invoices")]);
+  const lastRun=await setting("engine_last_run");
+  const automation={enabled:await automationEnabled(),engine_version:ENGINE_VERSION,last_run:lastRun?JSON.parse(lastRun):null};
+  return ok({rebates,referrals,users,codes,campaigns,customers,payments,rewards,fraud,report_runs,invoices,automation,currentUser,today:today()});
 }catch(e){return handle(e);}}
 export async function POST(request:Request){try{
   const origin=request.headers.get("origin");if(origin&&origin!==new URL(request.url).origin)throw fail("Request origin is not allowed.",403);
@@ -73,7 +126,9 @@ export async function POST(request:Request){try{
     const duplicate=await db().prepare("SELECT data FROM records WHERE kind='rebates' AND lower(json_extract(data,'$.email'))=? AND json_extract(data,'$.rebate_code')=? AND json_extract(data,'$.date_of_sale')=?").bind(input.email.toLowerCase(),input.rebate_code,input.date_of_sale).first<{data:string}>();
     if(duplicate)throw fail("A request already exists for this purchase. Use Track Payment or contact support.",409);
     const r={...input,id:crypto.randomUUID(),tracking_number:await uniqueTracking(),status:input.preinstallation?"REBATE_REGISTRATION":"PENDING",rebate_amount:Number(code.rebate_amount),date_submitted:today()};
-    const saved=await statement("rebates",r,false).run();if(!saved.meta.changes)throw fail("A request for this purchase was just submitted. Please track your existing request.",409);await log(input.email,`Submitted rebate ${r.id}`);return ok({tracking_number:r.tracking_number,status:r.status},201);
+    const saved=await statement("rebates",r,false).run();if(!saved.meta.changes)throw fail("A request for this purchase was just submitted. Please track your existing request.",409);await log(input.email,`Submitted rebate ${r.id}`);
+    const approved=r.status==="PENDING"&&await automationEnabled()&&(await autoApprove([r.id])).approved>0;
+    return ok({tracking_number:r.tracking_number,status:approved?"APPROVED":r.status},201);
   }
   if(action==="track"){
     const found=await lookup(String(body.tracking_number));const r=found.data;
@@ -84,7 +139,9 @@ export async function POST(request:Request){try{
     if(found.kind!=="rebates"||r.status!=="REBATE_REGISTRATION")throw fail("This request is not awaiting installation. Track your payment for the latest status.");
     if(email.parse(body.email).toLowerCase()!==r.email.toLowerCase())throw fail("The email does not match this registration.",403);
     const pto=date.parse(body.pto_date);if(pto>today()||pto<r.date_of_sale)throw fail("Enter a valid PTO date on or after your date of sale.");
-    const old=JSON.stringify(r);r.pto_date=pto;r.status="PENDING";r.installation_complete_date=today();const updated=await db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(r),r.id,old).run();if(!updated.meta.changes)throw fail("This request changed while you were editing. Check its latest status.",409);await log(r.email,`Finalized rebate ${r.id}`);return ok({tracking_number:r.tracking_number,status:r.status});
+    const old=JSON.stringify(r);r.pto_date=pto;r.status="PENDING";r.installation_complete_date=today();const updated=await db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(r),r.id,old).run();if(!updated.meta.changes)throw fail("This request changed while you were editing. Check its latest status.",409);await log(r.email,`Finalized rebate ${r.id}`);
+    const approved=await automationEnabled()&&(await autoApprove([r.id])).approved>0;
+    return ok({tracking_number:r.tracking_number,status:approved?"APPROVED":r.status});
   }
   if(action==="contact"){
     const data=z.object({name:text,email,subject:z.enum(["Rebate question","Referral question","Tracking number assistance","Visa card support","Other"]),message:z.string().trim().min(10).max(5000)}).parse(body.data);
@@ -105,8 +162,70 @@ export async function POST(request:Request){try{
     if(selected.some(r=>!r||r.status!=="PENDING"))throw fail("One or more requests are no longer pending. Refresh the list.",409);
     if(status==="APPROVED"&&selected.some(r=>r?.payment_hold))throw fail("A selected request has an active fraud-review hold and cannot be approved.",409);
     if(status==="DECLINED"&&selected.some(r=>!declineReasons.includes(body.reasons?.[r!.id])))throw fail("Choose a decline reason for every selected rebate.");
-    const updates=selected.map(r=>{const old=JSON.stringify(r);const next={...r,status,date_approved_declined:today(),approved_declined_by:actor.name,decline_reason:status==="DECLINED"?body.reasons[r!.id]:""};return db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(next),r!.id,old);});
+    const {run}=await engine();
+    const updates=selected.map(r=>{const old=JSON.stringify(r);const next={...r,status,date_approved_declined:today(),approved_declined_by:actor.name,decline_reason:status==="DECLINED"?body.reasons[r!.id]:"",decision:decisionRecord(run(r!),"manual",status,actor.name)};return db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(next),r!.id,old);});
     const results=await db().batch(updates);const count=results.reduce((n,r)=>n+(r.meta.changes||0),0);await log(actor.email,`${status}: ${count} rebates`);return ok({count});
+  }
+  if(action==="run-engine"){
+    const tally=await autoApprove();
+    const run={...tally,at:new Date().toISOString(),by:actor.name,engine_version:ENGINE_VERSION};
+    await putSetting("engine_last_run",JSON.stringify(run));await log(actor.email,`Ran ${ENGINE_VERSION}: ${tally.approved} approved automatically`);
+    return ok(run);
+  }
+  if(action==="set-automation"){
+    const enabled=z.boolean().parse(body.enabled);await putSetting("auto_approve",enabled?"on":"off");
+    await log(actor.email,`Automatic approval turned ${enabled?"on":"off"}`);return ok({enabled});
+  }
+  if(action==="apply-recommendations"){
+    // The client sends what it saw; the server re-evaluates and only applies decisions that still match.
+    const items=z.array(z.object({id:z.string(),recommendation:z.enum(["APPROVE","DECLINE"])})).min(1).max(200).parse(body.items);
+    if(new Set(items.map(i=>i.id)).size!==items.length)throw fail("Select distinct requests.");
+    const {rebates,run}=await engine();const byId=new Map(rebates.map(r=>[r.id,r]));
+    const skipped:string[]=[];
+    const updates=items.flatMap(item=>{
+      const r=byId.get(item.id);const ev=r&&r.status==="PENDING"?run(r):null;
+      if(!r||!ev||ev.recommendation!==item.recommendation||(item.recommendation==="APPROVE"&&r.payment_hold)){skipped.push(r?.tracking_number||item.id);return [];}
+      const status=item.recommendation==="APPROVE"?"APPROVED":"DECLINED";
+      const next={...r,status,date_approved_declined:today(),approved_declined_by:actor.name,decline_reason:status==="DECLINED"?ev.declineReason||"":"",decision:decisionRecord(ev,"engine",status,actor.name)};
+      return [db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify(next),r.id,JSON.stringify(r))];
+    });
+    const results=updates.length?await db().batch(updates):[];const applied=results.reduce((n,r)=>n+(r.meta.changes||0),0);
+    await log(actor.email,`Accepted ${applied} engine recommendations (${ENGINE_VERSION})`);
+    return ok({applied,skipped:skipped.length+(updates.length-applied),skipped_tracking:skipped});
+  }
+  if(action==="create-invoice"){
+    const range=z.object({from:date.optional().or(z.literal("")),to:date.optional().or(z.literal(""))}).parse(body);
+    if(range.from&&range.to&&range.from>range.to)throw fail("The end date must be on or after the start date.");
+    const [rebates,invoices]=await Promise.all([rows("rebates"),rows("invoices")]);
+    const picked=rebates.filter(r=>invoiceable(r)&&(!range.from||r.date_approved_declined>=range.from)&&(!range.to||r.date_approved_declined<=range.to)).sort((a,b)=>a.date_approved_declined.localeCompare(b.date_approved_declined)||a.tracking_number.localeCompare(b.tracking_number));
+    if(!picked.length)throw fail("No approved rebates are waiting to be invoiced for these dates.");
+    if(picked.length>1000)throw fail("Invoice at most 1,000 rebates at a time. Narrow the approval dates.");
+    const year=today().slice(0,4),seq=invoices.filter(i=>i.invoice_number?.startsWith(`INV-${year}-`)).length+1;
+    const lines=picked.map(invoiceLine),dates=picked.map(r=>r.date_approved_declined);
+    const invoice={id:crypto.randomUUID(),invoice_number:`INV-${year}-${String(seq).padStart(4,"0")}`,status:"DRAFT",date_created:today(),created_by:actor.name,due_date:addDays(today(),PAYMENT_TERMS_DAYS),period_start:range.from||dates[0],period_end:range.to||dates[dates.length-1],from:INVOICE_FROM,bill_to:INVOICE_TO,lines,count:lines.length,total:invoiceTotal(lines),engine_version:ENGINE_VERSION};
+    const links=picked.map(r=>db().prepare("UPDATE records SET data=? WHERE id=? AND kind='rebates' AND data=?").bind(JSON.stringify({...r,program_invoice_id:invoice.id,program_invoice_number:invoice.invoice_number}),r.id,JSON.stringify(r)));
+    const linked=[];for(let i=0;i<links.length;i+=80)linked.push(...await db().batch(links.slice(i,i+80)));
+    if(linked.some(r=>!r.meta.changes)){
+      // Something changed underneath us: undo the links that did land and refuse.
+      const fresh=(await rows("rebates")).filter(r=>r.program_invoice_id===invoice.id);
+      for(let i=0;i<fresh.length;i+=80)await db().batch(fresh.slice(i,i+80).map(r=>statement("rebates",withoutInvoice(r))));
+      throw fail("Some rebates changed while the invoice was being created. Refresh and try again.",409);
+    }
+    await statement("invoices",invoice,false).run();await log(actor.email,`Created invoice ${invoice.invoice_number} for ${lines.length} rebates`);
+    return ok({invoice},201);
+  }
+  if(action==="update-invoice"){
+    const status=z.enum(["ISSUED","PAID","VOID"]).parse(body.status);
+    const invoice=await row(String(body.id),"invoices");if(!invoice)throw fail("Invoice not found.",404);
+    if(!invoiceTransitions[invoice.status]?.includes(status))throw fail(`A ${invoice.status.toLowerCase()} invoice cannot be marked ${status.toLowerCase()}.`,409);
+    const old=JSON.stringify(invoice);const next={...invoice,status,[`date_${status.toLowerCase()}`]:today(),[`${status.toLowerCase()}_by`]:actor.name};
+    const updated=await db().prepare("UPDATE records SET data=? WHERE id=? AND kind='invoices' AND data=?").bind(JSON.stringify(next),invoice.id,old).run();
+    if(!updated.meta.changes)throw fail("This invoice changed while you were working. Refresh and try again.",409);
+    if(status==="VOID"){
+      const released=(await rows("rebates")).filter(r=>r.program_invoice_id===invoice.id);
+      for(let i=0;i<released.length;i+=80)await db().batch(released.slice(i,i+80).map(r=>statement("rebates",withoutInvoice(r))));
+    }
+    await log(actor.email,`Invoice ${invoice.invoice_number} marked ${status}`);return ok({invoice:next});
   }
   if(action==="update-referral"){
     const r=await row(String(body.id),"referrals");if(!r)throw fail("Referral not found.",404);

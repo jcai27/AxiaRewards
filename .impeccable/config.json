@@ -1,0 +1,20 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-10-24T03:26:45.679Z",
+        "reason": "Claude decided: same Inter choice, Google Fonts import line in app/admin.css"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-10-24T04:05:19.023Z",
+        "reason": "Claude decided: Arial is only the fallback in the pre-existing consumer stack ('DM Sans',Arial,sans-serif), not a chosen face"
+      }
+    ]
+  }
+}

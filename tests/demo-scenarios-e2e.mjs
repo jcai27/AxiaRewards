@@ -13,7 +13,7 @@ try{
   const first=await (await context.request.get(base+'/api/program')).json();
   for(const [kind,count] of Object.entries({customers:60,payments:94,rewards:60,fraud:18,report_runs:12}))assert.equal(first[kind].length,count,kind);
   assert.equal(first.users.filter(u=>u.id.startsWith('demo-staff-')).length,12);assert.equal(first.rebates.filter(r=>r.id.startsWith('demo-rebate-')).length,72);assert.equal(first.referrals.filter(r=>r.id.startsWith('demo-referral-')).length,36);pass('all expanded scenario records persist alongside existing data');
-  await page.getByRole('button',{name:/Solar customers 60 connected profiles/}).click();await page.getByRole('heading',{name:'Solar Customers',exact:true}).waitFor();
+  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('link',{name:'Solar customers',exact:true}).click();await page.getByRole('heading',{name:'Solar Customers',exact:true}).waitFor();
   await page.getByRole('button',{name:'Maya Chen',exact:true}).first().click();await page.getByRole('heading',{name:'Solar rebate history',exact:true}).waitFor();
   await page.locator('dialog .scenario-history .text-button').first().click();await page.getByRole('heading',{name:'All Rebates',exact:true}).waitFor();assert.equal(await page.locator('tbody tr').count(),1);pass('customer profiles link to the exact solar rebate');
   await visit('/fraud-review','Fraud Review');await page.getByRole('combobox',{name:'Filter demo status'}).selectOption('CONFIRMED');assert.equal(await page.locator('tbody tr').count(),4);pass('fraud cases support status filtering');
