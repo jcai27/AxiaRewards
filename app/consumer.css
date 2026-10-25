@@ -168,3 +168,15 @@
 .consumer-app .visa-card.small .logo-img{height:24px}
 .consumer-app .redeem-intro>h2,.consumer-app .home-help h2{color:var(--cx-ink);font-weight:500}
 .consumer-app .home-help{background:var(--cx-cream);border:0;border-radius:24px;padding:40px 48px;margin-top:20px}
+
+/* Issued card and card lookup */
+.consumer-app .issued-card h2{font-size:44px;letter-spacing:-1.5px}
+.consumer-app .card-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px;margin:20px 0 24px}
+.consumer-app .card-facts dt{font-size:12px;color:var(--cx-text-3);text-transform:uppercase;letter-spacing:.6px}
+.consumer-app .card-facts dd{margin:2px 0 0;font-size:15px;color:var(--cx-ink);font-weight:500}
+.consumer-app .card-lookup{max-width:720px;margin:32px auto 0;padding:28px}
+.consumer-app .card-lookup h2{color:var(--cx-ink)}
+.consumer-app .card-lookup>p{color:var(--cx-text-3);margin:6px 0 18px}
+.consumer-app .card-lookup .button{margin-top:16px}
+.consumer-app .track-result .notice-card{margin:14px 0;display:flex;gap:10px;align-items:start;padding:12px 14px}
+@media (max-width:640px){.consumer-app .card-lookup{margin:20px 16px 0;padding:20px}.consumer-app .issued-card h2{font-size:36px}}

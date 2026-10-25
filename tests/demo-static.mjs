@@ -21,7 +21,7 @@ try{
   await page.getByRole('button',{name:/No, let's get started/}).click();
   const fields={first_name:'Static',last_name:`Demo ${runId}`,email:`static-${runId}@example.com`,phone:'(555) 010-2211',address1:`${runId%10000000} Pages Way`,city:'San Diego',zip:'92101',date_of_sale:'2026-09-01',pto_date:'2026-10-01',sales_rep_name:'Jordan Lee',certified_by:'Static Demo'};
   for(const [name,value] of Object.entries(fields))await page.locator(`[name="${name}"]`).fill(value);
-  await page.locator('[name="state"]').selectOption('CA');await page.locator('[name="rebate_code"]').selectOption('AxiaSummer2026');await page.locator('[name="financier"]').selectOption('Cash');await page.locator('[name="certified"]').check();
+  await page.locator('[name="state"]').selectOption('CA');await page.locator('[name="rebate_code"]').fill('axiasummer2026');await page.locator('[name="financier"]').selectOption('Cash');await page.locator('[name="certified"]').check();
   await page.getByRole('button',{name:/Submit my rebate/}).click();
   await page.getByRole('heading',{name:"You're on your way to a reward.",exact:true}).waitFor();
   const tracking=await page.locator('.tracking-result strong').innerText();assert.match(tracking,/^\d{10}$/);

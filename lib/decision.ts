@@ -1,18 +1,19 @@
 import type { Row } from "./program";
-import {policyFor,type PromotionPolicy} from "./promotion-policy";
+import {FINANCING_OPTIONS,policyFor,rebateAmountFor,type PromotionPolicy} from "./promotion-policy";
 
 // Rebate decision engine. Pure and isomorphic: the browser uses it to show
 // recommendations, and the API re-runs it before applying any decision.
-export const ENGINE_VERSION = "rules-v3";
+export const ENGINE_VERSION = "rules-v4";
 
 export type CheckStatus = "pass" | "fail" | "warn";
 export type Recommendation = "APPROVE" | "DECLINE" | "REVIEW";
-export type Check = { id: string; label: string; status: CheckStatus; detail: string; declineReason?: string; notRequired?:boolean };
+// "notice" flags something a reviewer should see without holding the claim, such as a capped amount.
+export type Check = { id: string; label: string; status: CheckStatus; detail: string; declineReason?: string; notRequired?:boolean; notice?: string };
 export type Evaluation = { recommendation: Recommendation; checks: Check[]; declineReason?: string; summary: string; version: string; promotion?:{code:string;revision:number;settings:PromotionPolicy;amount:number;start_date:string;end_date:string} };
 export type RuleGroup = "Project completion" | "Eligibility" | "Integrity";
 export type Rule = { id: string; group: RuleGroup; label: string; description: string; onFail: "Decline" | "Review" };
 
-export const VALID_FINANCIERS = ["Cash", "Solar loan", "Lease", "Power purchase agreement"];
+export const VALID_FINANCIERS: readonly string[] = FINANCING_OPTIONS;
 export const SUBMISSION_WINDOW_DAYS = 180;
 const approvedStatuses = ["APPROVED", "FUNDED", "SHIPPED"];
 
@@ -28,14 +29,14 @@ export const RULES: Rule[] = [
   { id: "dates", group: "Project completion", label: "Sale, install and PTO dates are consistent", description: "The sale is on or before submission; PTO is on or after the sale and on or before the request was filed.", onFail: "Decline" },
   { id: "campaign", group: "Eligibility", label: "Sale within campaign dates", description: "The date of sale falls between the rebate campaign's start and end dates.", onFail: "Decline" },
   { id: "code", group: "Eligibility", label: "Rebate code is active", description: "The submitted rebate code exists and is currently active.", onFail: "Decline" },
-  { id: "amount", group: "Eligibility", label: "Amount matches code value", description: "The requested amount equals the value of the rebate code.", onFail: "Review" },
+  { id: "amount", group: "Eligibility", label: "Amount matches promotion", description: "The amount equals the code's fixed value, or its multiple of the EnFin monthly payment kept within the promotion's minimum and maximum. Amounts over the maximum are capped and flagged.", onFail: "Review" },
   { id: "window", group: "Eligibility", label: "Filed within promotion deadline", description: "The request meets the deadline set for its promotion code.", onFail: "Review" },
   { id: "financier", group: "Eligibility", label: "Financing option is valid", description: "Financing is allowed by the promotion code settings.", onFail: "Decline" },
   { id: "certified", group: "Eligibility", label: "Form is certified", description: "The customer certified the submission and named the certifier.", onFail: "Review" },
   { id: "system", group: "Eligibility", label: "System meets promotion minimum", description: "The installed system meets the minimum kW set for its promotion code.", onFail: "Review" },
   { id: "state", group: "Eligibility", label: "State is eligible for promotion", description: "The installation is in a state allowed by its promotion code.", onFail: "Review" },
   { id: "serial", group: "Integrity", label: "Serial in daily serial file", description: "The module serial number appears in the daily serial file Axia sends to BPS.", onFail: "Review" },
-  { id: "duplicate", group: "Integrity", label: "No duplicate claim", description: "No other non-declined claim shares this address and rebate code, invoice number, or module serial.", onFail: "Decline" },
+  { id: "duplicate", group: "Integrity", label: "No duplicate claim", description: "No approved claim at this address already used this rebate code. Other claims at the same address (any code), or sharing the invoice number or module serial, are held for review.", onFail: "Decline" },
   { id: "fraud", group: "Integrity", label: "No fraud hold", description: "The claim has no open fraud case or payment hold.", onFail: "Review" },
   { id: "risk", group: "Integrity", label: "Risk level acceptable", description: "Risk level is low or not assessed.", onFail: "Review" },
   { id: "customer", group: "Integrity", label: "Address matches customer record", description: "When linked to a customer profile, the address and ZIP match it.", onFail: "Review" },
@@ -43,6 +44,18 @@ export const RULES: Rule[] = [
 const ruleLabel = (id: string) => RULES.find((r) => r.id === id)!.label;
 
 const norm = (v: unknown) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+// USPS-style abbreviations so "123 North Main Street, Apt 4" and "123 N Main St #4" match.
+const ADDRESS_WORDS: Record<string, string> = {
+  street: "st", avenue: "ave", av: "ave", road: "rd", drive: "dr", lane: "ln", boulevard: "blvd", court: "ct", circle: "cir",
+  place: "pl", terrace: "ter", parkway: "pkwy", highway: "hwy", trail: "trl", square: "sq", point: "pt", crossing: "xing",
+  north: "n", south: "s", east: "e", west: "w", northeast: "ne", northwest: "nw", southeast: "se", southwest: "sw",
+  apartment: "", apt: "", unit: "", suite: "", ste: "", number: "", no: "",
+};
+const addressKey = (r: Row) => {
+  const zip = String(r.zip ?? "").replace(/\D/g, "").slice(0, 5);
+  const street = `${r.address1 ?? ""} ${r.address2 ?? ""}`.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").map((w) => ADDRESS_WORDS[w] ?? w).join("");
+  return street && zip ? `${street}|${zip}` : "";
+};
 const days = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86400000);
 const usd = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
 
@@ -50,7 +63,7 @@ export type DecisionContext = {
   today: string;
   codes: Map<string, Row>;
   customers: Map<string, Row>;
-  byAddressCode: Map<string, Row[]>;
+  byAddress: Map<string, Row[]>;
   byInvoice: Map<string, Row[]>;
   bySerial: Map<string, Row[]>;
   serialFile: Set<string>;
@@ -74,7 +87,7 @@ export function decisionContext(data: { rebates: Row[]; codes: Row[]; customers?
     today,
     codes: new Map(data.codes.map((c) => [c.rebate_code, c])),
     customers: new Map((data.customers || []).map((c) => [c.id, c])),
-    byAddressCode: group(live, (r) => (r.address1 && r.zip ? `${norm(r.address1)}|${norm(r.zip)}|${r.rebate_code}` : "")),
+    byAddress: group(live, addressKey),
     byInvoice: group(live, (r) => norm(r.invoice_number)),
     bySerial: group(live, (r) => norm(r.module_serial)),
     serialFile: new Set((data.serial_file || []).map(norm)),
@@ -85,7 +98,7 @@ export function decisionContext(data: { rebates: Row[]; codes: Row[]; customers?
 export function relatedClaims(r: Row, ctx: DecisionContext) {
   const others = (list: Row[] | undefined) => (list || []).filter((o) => o.id !== r.id);
   return {
-    address: others(ctx.byAddressCode.get(`${norm(r.address1)}|${norm(r.zip)}|${r.rebate_code}`)),
+    address: others(ctx.byAddress.get(addressKey(r))),
     invoice: r.invoice_number ? others(ctx.byInvoice.get(norm(r.invoice_number))) : [],
     serial: r.module_serial ? others(ctx.bySerial.get(norm(r.module_serial))) : [],
   };
@@ -119,10 +132,17 @@ export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
     add("campaign", "fail", `Sold ${r.date_of_sale || "on an unknown date"}; ${r.rebate_code} runs ${code.start_date} to ${code.end_date}.`, "Sale outside campaign dates");
   else add("campaign", "pass", `Sold ${r.date_of_sale}; ${r.rebate_code} runs ${code.start_date} to ${code.end_date}.`);
 
-  if (code && Math.abs(Number(code.rebate_amount) - Number(r.rebate_amount)) > 0.005)
-    add("amount", "warn", `Requested ${usd(r.rebate_amount)}; ${r.rebate_code} pays ${usd(code.rebate_amount)}.`);
-  else if (code) add("amount", "pass", `${usd(r.rebate_amount)} matches the code value.`);
-  else add("amount", "warn", "Cannot compare the amount without a valid code.");
+  const due = code ? rebateAmountFor(code, r) : undefined;
+  const formula = due?.payment ? `${policy.payment_multiplier} × ${usd(due.payment)} EnFin monthly payment = ${usd(due.calculated!)}` : "";
+  if (!code || !due) add("amount", "warn", "Cannot compare the amount without a valid code.");
+  else if (due.missingPayment) add("amount", "warn", `No EnFin monthly payment on file; ${r.rebate_code} pays ${policy.payment_multiplier} × the monthly payment.`);
+  else if (Math.abs(due.amount - Number(r.rebate_amount)) > 0.005)
+    add("amount", "warn", `Requested ${usd(r.rebate_amount)}; ${r.rebate_code} pays ${usd(due.amount)}${formula ? ` (${formula}${due.capped ? `, kept within ${usd(policy.min_rebate_amount)}–${usd(policy.max_rebate_amount)}` : ""})` : ""}.`);
+  else if (due.capped === "max") {
+    add("amount", "pass", `${formula}, capped at the ${usd(policy.max_rebate_amount)} maximum.`);
+    checks[checks.length - 1].notice = `Calculated amount exceeds the ${usd(policy.max_rebate_amount)} maximum by ${usd(due.calculated! - policy.max_rebate_amount)}; paying the maximum.`;
+  } else if (due.capped === "min") add("amount", "pass", `${formula}, raised to the ${usd(policy.min_rebate_amount)} minimum.`);
+  else add("amount", "pass", formula ? `${formula}.` : `${usd(r.rebate_amount)} matches the code value.`);
 
   if (r.status === "REBATE_REGISTRATION" || (r.preinstallation && !r.installation_complete_date))
     add("pto", "fail", "Registered before installation; installation has not been confirmed.", "System has not been installed");
@@ -165,9 +185,11 @@ export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
   else add("serial", "pass", `${r.module_serial} matched in the daily serial file.`);
 
   const related = relatedClaims(r, ctx);
-  const approvedTwin = related.address.find((o) => approvedStatuses.includes(o.status));
+  const sameCode = related.address.filter((o) => o.rebate_code === r.rebate_code);
+  const approvedTwin = sameCode.find((o) => approvedStatuses.includes(o.status));
   if (approvedTwin) add("duplicate", "fail", `Claim ${approvedTwin.tracking_number} for this address and code is already ${approvedTwin.status.toLowerCase()}.`, "Duplicate rebate submitted");
-  else if (related.address.length) add("duplicate", "warn", `Claim ${related.address[0].tracking_number} has the same address and code.`);
+  else if (sameCode.length) add("duplicate", "warn", `Claim ${sameCode[0].tracking_number} has the same address and code.${policy.auto_decline_duplicates ? " Approving either one automatically declines the other as a duplicate." : ""}`);
+  else if (related.address.length) add("duplicate", "warn", `Claim ${related.address[0].tracking_number} at this address used code ${related.address[0].rebate_code}.`);
   else if (related.invoice.length) add("duplicate", "warn", `Invoice ${r.invoice_number} also appears on claim ${related.invoice[0].tracking_number}.`);
   else if (related.serial.length) add("duplicate", "warn", `Module serial ${r.module_serial} also appears on claim ${related.serial[0].tracking_number}.`);
   else add("duplicate", "pass", "No matching address, invoice or serial.");
@@ -200,3 +222,4 @@ export function evaluate(r: Row, ctx: DecisionContext): Evaluation {
 
 export const recommendationLabel: Record<Recommendation, string> = { APPROVE: "Meets all thresholds", DECLINE: "Suggest decline", REVIEW: "Needs review" };
 export const AUTO_APPROVER = "Automatic approval";
+export const AUTO_DUPLICATE_DECLINER = "Automatic duplicate check";

@@ -193,9 +193,9 @@
 .admin-app .pill{display:inline-block;font-size:12px;font-weight:500;letter-spacing:0;text-transform:lowercase;border-radius:3px;padding:2px 7px;line-height:18px;color:var(--ax-neutral);background:var(--ax-neutral-soft)}
 .admin-app .pill>i{display:none}
 .admin-app .pill::first-letter{text-transform:uppercase}
-.admin-app .pill:is(.pending,.rebate_registration,.scheduled,.processing,.issued,.reissued,.shipped,.processed){color:var(--ax-info);background:var(--ax-info-soft)}
-.admin-app .pill:is(.approved,.active,.funded,.installation_complete,.low,.paid,.completed,.cleared,.activated,.partially_spent){color:var(--ax-ok);background:var(--ax-ok-soft)}
-.admin-app .pill:is(.medium,.on_hold,.under_review,.open,.expired){color:var(--ax-warn);background:var(--ax-warn-soft)}
+.admin-app .pill:is(.pending,.rebate_registration,.scheduled,.processing,.issued,.reissued,.shipped,.processed,.mailing,.in_progress){color:var(--ax-info);background:var(--ax-info-soft)}
+.admin-app .pill:is(.approved,.active,.funded,.installation_complete,.low,.paid,.completed,.cleared,.activated,.partially_spent,.delivered,.resolved){color:var(--ax-ok);background:var(--ax-ok-soft)}
+.admin-app .pill:is(.medium,.on_hold,.under_review,.open,.expired,.received){color:var(--ax-warn);background:var(--ax-warn-soft)}
 .admin-app .pill:is(.declined,.disqualified,.high,.failed,.returned,.confirmed,.blocked){color:var(--ax-bad);background:var(--ax-bad-soft)}
 .admin-app .pill:is(.inactive,.not_assessed){color:var(--ax-neutral);background:var(--ax-neutral-soft)}
 .admin-app .role-tag{font-size:12px;font-weight:500;background:var(--ax-neutral-soft);color:var(--ax-text-2);border-radius:3px;padding:2px 7px}
@@ -278,6 +278,7 @@
 .admin-app .access-state p{font-size:14px;color:var(--ax-text-3)}
 
 /* Dialogs and feedback */
+.admin-app dialog:modal{margin:auto}
 .admin-app dialog{border:1px solid var(--ax-line);border-radius:var(--ax-radius-lg);box-shadow:0 12px 32px #171a2633;padding:20px 24px}
 .admin-app dialog::backdrop{background:#171a2666;backdrop-filter:none}
 .admin-app .modal-heading{margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--ax-line)}
@@ -500,6 +501,8 @@
 .cond-status{text-align:right;font-size:13px;font-weight:500}
 .cond-pass .cond-status{color:var(--ax-ok)}
 .cond-warn .cond-status{color:var(--ax-warn)}
+.cond small.cond-notice,.promotion-checks small.cond-notice{display:block;color:var(--ax-warn);font-weight:500;margin-top:4px}
+.admin-app .tag.warn-tag{color:var(--ax-warn);background:var(--ax-warn-soft);margin-left:8px;vertical-align:1px}
 .cond-fail .cond-status{color:var(--ax-bad)}
 .cond-fail b{color:var(--ax-bad)}
 .record-outcome{margin:18px 28px;border:2px solid;border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap}
@@ -674,3 +677,22 @@
 @media(max-width:1200px){.promotion-layout{grid-template-columns:240px minmax(0,1fr);gap:20px}.promotion-heading{flex-direction:column}.promotion-field-grid{grid-template-columns:1fr}}
 @media(max-width:800px){.promotion-layout{grid-template-columns:minmax(0,1fr)}.promotion-directory{position:static}.promotion-code-list{max-height:230px}.promotion-field-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.promotion-heading,.promotion-section{padding:18px 16px}.promotion-save{padding:16px;align-items:stretch;flex-direction:column;gap:12px}.promotion-field-grid{grid-template-columns:1fr}.promotion-preview{padding:18px 16px}.promotion-preview-head{align-items:start}.promotion-checks li{flex-direction:column;gap:4px}.promotion-impact{flex-direction:column}.promotion-heading h2{font-size:17px!important}.promotion-options{flex-direction:column}.record-ref .tracking-link{overflow-wrap:anywhere;text-align:left}}
+
+/* Card delivery and support */
+.admin-app .row-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.card-email{display:grid;gap:14px}
+.card-email-head{display:grid;gap:6px;margin:0;padding:12px 14px;background:var(--ax-subtle);border-radius:6px;font-size:13px}
+.card-email-head div{display:grid;grid-template-columns:64px 1fr}
+.card-email-head dt{color:var(--ax-text-3)}.card-email-head dd{margin:0;color:var(--ax-ink);overflow-wrap:anywhere}
+.card-email-body{display:grid;gap:12px;padding:4px 2px;font-size:14.5px;color:var(--ax-text-2)}
+.card-email-body .button{display:inline-flex}
+.support-ticket{display:grid;gap:12px}
+.support-message{padding:12px 14px;border:1px solid var(--ax-line-soft);border-radius:6px}
+.support-message.reply{background:var(--ax-brand-soft);border-color:transparent;margin-left:24px}
+.support-message span{display:block;font-size:12px;color:var(--ax-text-3);margin-bottom:4px}
+.support-message p{font-size:14px;color:var(--ax-ink);white-space:pre-wrap}
+.support-context{display:grid;gap:6px;padding:12px 14px;background:var(--ax-subtle);border-radius:6px;font-size:13.5px;color:var(--ax-text-2)}
+.support-context>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.support-ticket form{display:grid;gap:12px}
+.support-actions{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.support-actions .field{min-width:180px}

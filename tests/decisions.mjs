@@ -41,6 +41,67 @@ try{
   assert.equal((await post({action:'track',tracking_number:badFinancier.tracking_number})).decline_reason,'Invalid financier option');
   pass('accepting a decline suggestion records the engine reason and shows it in tracking');
 
+  const unknown=await context.request.post(base+'/api/program',{data:{action:'submit-rebate',data:claim('unknown',{rebate_code:'NOT-A-CODE'})}});
+  assert.equal(unknown.status(),400);assert.match((await unknown.json()).error,/don't recognize the rebate code "NOT-A-CODE"/);
+  pass('a typed rebate code that does not exist is rejected with a clear message');
+
+  const enfinCode=(await admin()).codes.find(c=>c.rebate_code==='AXIA-ENFIN-2026');assert.deepEqual(enfinCode.policy.allowed_financiers,['EnFin']);
+  const home=`${runId%10000000} North Duplicate Street`;
+  try{
+    await post({action:'set-automation',enabled:true});
+    const enfin=await post({action:'submit-rebate',data:claim('enfin',{rebate_code:'AXIA-ENFIN-2026',financier:'EnFin'})},201);assert.equal(enfin.status,'APPROVED');
+    let all=await admin();const enfinRow=all.rebates.find(r=>r.tracking_number===enfin.tracking_number);
+    const expected=Math.min(2500,Math.max(500,Math.round(enfinRow.enfin_monthly_payment*600)/100));
+    assert.ok(enfinRow.enfin_monthly_payment>0);assert.equal(enfinRow.enfin_source,'demo-simulated');assert.equal(enfinRow.rebate_amount,expected);
+    assert.equal(enfinRow.rebate_capped,enfinRow.enfin_monthly_payment*6>2500?'max':enfinRow.enfin_monthly_payment*6<500?'min':'');
+    const capped=all.rebates.find(r=>r.id==='promotion-demo-12');assert.equal(capped.rebate_amount,2500);assert.equal(capped.rebate_calculated_amount,2773.5);assert.equal(capped.rebate_capped,'max');
+    pass('EnFin promotions pay 6x the monthly payment pulled from EnFin, capped at the maximum');
+
+    const email=all.card_emails.find(m=>m.tracking_number===enfin.tracking_number);assert.ok(email,'approval emails a card');assert.equal(email.to,enfinRow.email);
+    const card=all.rewards.find(c=>c.id===`reward-${enfinRow.id}`);assert.equal(card.status,'DELIVERED');assert.equal(card.issued_amount,expected);
+    assert.equal((await post({action:'track',tracking_number:enfin.tracking_number})).card_status,'DELIVERED');
+    const wrong=await context.request.post(base+'/api/program',{data:{action:'view-card',tracking_number:enfin.tracking_number,email:'someone-else@example.com'}});assert.equal(wrong.status(),404);
+    const viewed=await post({action:'view-card',tracking_number:enfin.tracking_number,email:enfinRow.email});assert.equal(viewed.card.last_four,card.last_four);assert.equal(viewed.card.claim_token,undefined);
+    assert.equal((await post({action:'view-card',claim:card.claim_token,activate:true})).card.status,'ACTIVATED');
+    assert.equal((await post({action:'send-card',tracking_number:enfin.tracking_number})).sends,2);
+    pass('approval issues a digital card by email that the customer can view and activate, and staff can resend');
+    await page.goto(base+'/card-delivery');await page.getByRole('heading',{name:'Card delivery',exact:true}).waitFor();
+    await page.getByRole('row').filter({hasText:enfin.tracking_number}).getByRole('button',{name:/Preview/}).click();await page.getByRole('link',{name:/View and activate my card/}).waitFor();
+    await page.goto(base+`/my-visa-card?claim=${card.claim_token}`);await page.getByText(`•••• ${card.last_four}`).first().waitFor();
+    pass('card delivery lists the email preview and its claim link opens the customer card');
+
+    const contact=await post({action:'contact',data:{name:'Decision Test',email:enfinRow.email,subject:'Visa card support',tracking_number:enfin.tracking_number,message:'Where do I use my card?'}});
+    all=await admin();const ticket=all.support.find(t=>t.reference===contact.reference);assert.equal(ticket.status,'Received');assert.equal(ticket.tracking_number,enfin.tracking_number);
+    const replied=await post({action:'support-update',id:ticket.id,status:'Resolved',reply:'Anywhere Visa debit is accepted.'});assert.equal(replied.ticket.status,'Resolved');assert.equal(replied.ticket.thread.at(-1).text,'Anywhere Visa debit is accepted.');
+    await page.goto(base+'/support');await page.getByRole('heading',{name:'Customer support',exact:true}).waitFor();
+    pass('support requests reach the staff inbox, linked to the rebate, and staff can reply and resolve');
+    const original=await post({action:'submit-rebate',data:claim('duporiginal',{address1:home})},201);assert.equal(original.status,'APPROVED');
+    const copy=await post({action:'submit-rebate',data:claim('dupcopy',{address1:`${runId%10000000} N. Duplicate St`,rebate_code:'axiasummer2026'})},201);assert.equal(copy.status,'DECLINED');
+    const row=(await admin()).rebates.find(r=>r.tracking_number===copy.tracking_number);
+    assert.equal(row.rebate_code,'AxiaSummer2026');assert.equal(row.decline_reason,'Duplicate rebate submitted');assert.equal(row.approved_declined_by,'Automatic duplicate check');assert.equal(row.decision.source,'auto');
+    pass('a typed code is matched without case, and a claim duplicating an approved one at the same address is declined automatically');
+    const otherCode=await post({action:'submit-rebate',data:claim('dupother',{address1:home,rebate_code:'AXIA-ENFIN-2026',financier:'EnFin'})},201);assert.equal(otherCode.status,'PENDING');
+    const otherRow=(await admin()).rebates.find(r=>r.tracking_number===otherCode.tracking_number);assert.ok(otherRow);
+    pass('the same address under a different code is held for review, not declined');
+  }finally{await post({action:'set-automation',enabled:before.automation.enabled});}
+
+  const cash=await post({action:'submit-rebate',data:claim('enfincash',{rebate_code:'AXIA-ENFIN-2026',financier:'Cash'})},201);assert.equal(cash.status,'PENDING');
+  const cashRow=(await admin()).rebates.find(r=>r.tracking_number===cash.tracking_number);
+  assert.equal((await post({action:'apply-recommendations',items:[{id:cashRow.id,recommendation:'DECLINE'}]})).applied,1);
+  assert.equal((await admin()).rebates.find(r=>r.id===cashRow.id).decline_reason,'Invalid financier option');
+  pass('an EnFin-only promotion suggests declining other financing');
+
+  try{
+    await post({action:'set-automation',enabled:false});
+    const pairHome=`${runId%10000000} Pair Avenue`;
+    const a1=await post({action:'submit-rebate',data:claim('paira',{address1:pairHome})},201),a2=await post({action:'submit-rebate',data:claim('pairb',{address1:pairHome.replace('Avenue','Ave')})},201);
+    assert.equal(a1.status,'PENDING');assert.equal(a2.status,'PENDING');
+    data=await admin();const first=data.rebates.find(r=>r.tracking_number===a1.tracking_number);
+    const approvedPair=await post({action:'review',ids:[first.id],status:'APPROVED'});assert.equal(approvedPair.count,1);assert.equal(approvedPair.duplicates_declined,1);
+    assert.equal((await admin()).rebates.find(r=>r.tracking_number===a2.tracking_number).status,'DECLINED');
+    pass('two pending claims at one address are held until one is approved, then the other is declined as a duplicate');
+  }finally{await post({action:'set-automation',enabled:before.automation.enabled});}
+
   await page.goto(base+`/pending-rebates`);await page.getByRole('textbox',{name:'Search rebates',exact:true}).fill(late.tracking_number);await page.getByRole('button',{name:'Search',exact:true}).click();
   await page.getByRole('button',{name:/Decision Test late.*Filed within 180 days of PTO/}).click();
   const record=page.getByRole('article',{name:`Decision record for rebate ${late.tracking_number}`});await record.waitFor();

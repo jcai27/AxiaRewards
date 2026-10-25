@@ -3,7 +3,7 @@
 import React,{useEffect,useMemo,useRef,useState} from "react";
 import {Check,ChevronRight,LoaderCircle,Plus,Search} from "lucide-react";
 import {decisionContext,evaluate,recommendationLabel,type Evaluation} from "../lib/decision";
-import {defaultPromotionPolicy,FINANCING_OPTIONS,policyFor,promotionSchema,type PromotionPolicy} from "../lib/promotion-policy";
+import {defaultPromotionPolicy,FINANCING_OPTIONS,policyFor,promotionSchema,rebateAmountFor,type PromotionPolicy} from "../lib/promotion-policy";
 import {money,type Row} from "../lib/program";
 import {api,Empty,Title} from "./admin-ui";
 
@@ -30,7 +30,7 @@ export default function PromotionSettings(props:Props){
         <p className="promotion-count">{visible.length} promotion{visible.length===1?"":"s"}</p>
         <div className="promotion-code-list" ref={directory}>{visible.map(c=>{const p=policyFor(c);return <button key={c.id} className={c.id===selected?"current":""} aria-pressed={c.id===selected} onClick={()=>select(c.id)}>
           <span><strong>{c.rebate_code}</strong><small>{c.title||"Standard eligibility"}</small></span><ChevronRight size={16}/>
-          <span className="promotion-list-meta">{money(c.rebate_amount)} · {p.submission_window_days} days · {p.min_system_size_kw?`${p.min_system_size_kw} kW minimum`:"No size minimum"}</span>
+          <span className="promotion-list-meta">{p.amount_mode==="PAYMENT_MULTIPLE"?`${p.payment_multiplier}× EnFin payment, ${money(p.min_rebate_amount)}–${money(p.max_rebate_amount)}`:money(c.rebate_amount)} · {p.submission_window_days} days · {p.min_system_size_kw?`${p.min_system_size_kw} kW minimum`:"No size minimum"}</span>
           <span className={`pill ${c.active?"approved":"neutral"}`}>{c.active?"Active":"Inactive"}</span>{!p.auto_approve&&<span className="promotion-manual">Manual approval</span>}
         </button>;})}</div>
         {!visible.length&&<p className="promotion-count">No codes match. Try another search.</p>}
@@ -52,7 +52,9 @@ function PromotionEditor({code,data,go,reload,notify,readOnly,onSaved,onDirty}:P
     const valid=promotionSchema.safeParse(draft);if(!valid.success)return [];
     const before=decisionContext(data as {rebates:Row[];codes:Row[];customers:Row[];serial_file:string[]},data.today);
     const after=decisionContext({...data,rebates:data.rebates,codes:[...data.codes.filter((c:Row)=>c.id!==code?.id),{...code,...valid.data}]},data.today);
-    return data.rebates.filter((r:Row)=>r.status==="PENDING"&&r.rebate_code===code?.rebate_code).map((r:Row)=>({rebate:r,before:evaluate(r,before),after:evaluate(r,after)})) as {rebate:Row;before:Evaluation;after:Evaluation}[];
+    // Saving re-prices undecided payment-based claims, so preview them at the new amount.
+    const priced=(r:Row)=>valid.data.policy.amount_mode==="PAYMENT_MULTIPLE"?{...r,rebate_amount:rebateAmountFor(valid.data,r).amount}:r;
+    return data.rebates.filter((r:Row)=>r.status==="PENDING"&&r.rebate_code===code?.rebate_code).map((r:Row)=>({rebate:r,before:evaluate(r,before),after:evaluate(priced(r),after)})) as {rebate:Row;before:Evaluation;after:Evaluation}[];
   },[draft,data,code]);
   const qualifies=preview.filter(x=>x.after.recommendation==="APPROVE").length;
   const changed=preview.filter(x=>x.before.recommendation!==x.after.recommendation).length;
@@ -72,11 +74,17 @@ function PromotionEditor({code,data,go,reload,notify,readOnly,onSaved,onDirty}:P
         <section className="promotion-section"><h3>Promotion details</h3><div className="promotion-field-grid">
           <label className="field"><span>Promotion code</span><input required maxLength={100} value={draft.rebate_code} disabled={!!code} onChange={e=>update("rebate_code",e.target.value)}/><small>{code?"Code is fixed after creation; create another promotion to use a different code.":"Use letters, numbers, hyphens or underscores."}</small></label>
           <label className="field"><span>Promotion name</span><input required maxLength={120} value={draft.title} onChange={e=>update("title",e.target.value)}/></label>
-          <label className="field"><span>Rebate amount ($)</span><input type="number" min="0.01" max="100000" step="0.01" required value={draft.rebate_amount||""} onChange={e=>update("rebate_amount",Number(e.target.value))}/><small>Existing claims keep their requested amount.</small></label>
           <label className="promotion-check"><input type="checkbox" checked={draft.active} onChange={e=>update("active",e.target.checked)}/><span><b>Promotion is active</b><small>Inactive codes cannot receive new submissions.</small></span></label>
           <label className="field"><span>Eligible sales from</span><input type="date" required value={draft.start_date} onChange={e=>update("start_date",e.target.value)}/></label>
           <label className="field"><span>Eligible sales through</span><input type="date" required min={draft.start_date} value={draft.end_date} onChange={e=>update("end_date",e.target.value)}/></label>
         </div></section>
+        <section className="promotion-section"><h3>Rebate amount</h3><div className="promotion-field-grid">
+          <label className="field"><span>How the rebate is calculated</span><select value={draft.policy.amount_mode} onChange={e=>policy("amount_mode",e.target.value as PromotionPolicy["amount_mode"])}><option value="FIXED">Fixed amount</option><option value="PAYMENT_MULTIPLE">Multiple of EnFin monthly payment</option></select></label>
+          {draft.policy.amount_mode==="FIXED"?<label className="field"><span>Rebate amount ($)</span><input type="number" min="0.01" max="100000" step="0.01" required value={draft.rebate_amount||""} onChange={e=>update("rebate_amount",Number(e.target.value))}/><small>Existing claims keep their requested amount.</small></label>
+          :<><label className="field"><span>Months of payments</span><input type="number" min="1" max="24" step="1" required value={draft.policy.payment_multiplier||""} onChange={e=>policy("payment_multiplier",Number(e.target.value))}/><small>Rebate = this × the customer&rsquo;s EnFin monthly payment.</small></label>
+          <label className="field"><span>Minimum rebate ($)</span><input type="number" min="0" max="100000" step="0.01" required value={draft.policy.min_rebate_amount} onChange={e=>policy("min_rebate_amount",Number(e.target.value))}/><small>Smaller calculated amounts are raised to this.</small></label>
+          <label className="field"><span>Maximum rebate ($)</span><input type="number" min="0" max="100000" step="0.01" required value={draft.policy.max_rebate_amount} onChange={e=>policy("max_rebate_amount",Number(e.target.value))}/><small>Larger amounts are capped here and flagged with a warning.</small></label></>}
+        </div>{draft.policy.amount_mode==="PAYMENT_MULTIPLE"&&<p className="form-note">The monthly payment comes from EnFin (simulated in this demo). Undecided claims are re-priced when you save. Customers without EnFin financing are held for review.</p>}</section>
         <section className="promotion-section"><h3>Eligibility thresholds</h3><div className="promotion-field-grid">
           <label className="field"><span>Submission deadline (days after PTO)</span><input type="number" min="1" max="730" required value={draft.policy.submission_window_days||""} onChange={e=>policy("submission_window_days",Number(e.target.value))}/></label>
           <label className="field"><span>If submitted after the deadline</span><select value={draft.policy.late_submission_action} onChange={e=>policy("late_submission_action",e.target.value as "REVIEW"|"DECLINE")}><option value="REVIEW">Hold for review</option><option value="DECLINE">Hold and suggest decline</option></select></label>
@@ -89,7 +97,8 @@ function PromotionEditor({code,data,go,reload,notify,readOnly,onSaved,onDirty}:P
         <section className="promotion-section"><h3>Evidence and approval</h3><div className="promotion-evidence">
           {([["require_proof","Signed proof of purchase"],["require_crm","Installation verified in Creatio"],["require_serial","Match in the daily serial file"]] as const).map(([key,title])=><label className="promotion-check" key={key}><input type="checkbox" checked={draft.policy[key]} onChange={e=>policy(key,e.target.checked)}/><span>{title}</span></label>)}
           <label className="promotion-check"><input type="checkbox" checked={draft.policy.auto_approve} onChange={e=>policy("auto_approve",e.target.checked)}/><span><b>Automatically approve qualifying rebates</b><small>Also requires the program-wide automation setting to be on.</small></span></label>
-        </div><p className="form-note">PTO, date consistency, duplicate screening, fraud holds and risk checks always apply. Nothing is declined automatically.</p></section>
+          <label className="promotion-check"><input type="checkbox" checked={draft.policy.auto_decline_duplicates} onChange={e=>policy("auto_decline_duplicates",e.target.checked)}/><span><b>Automatically decline confirmed duplicates</b><small>A claim at the same address as an approved claim for this code is declined as a duplicate. Possible duplicates are held for review until one is approved.</small></span></label>
+        </div><p className="form-note">PTO, date consistency, duplicate screening, fraud holds and risk checks always apply. Apart from confirmed duplicates, nothing is declined automatically.</p></section>
       </fieldset>
       {readOnly&&<p className="promotion-notice">View-only access. An administrator with full access can change these settings.</p>}
       {error&&<div className="alert error" role="alert">{error}</div>}
@@ -103,7 +112,7 @@ function PromotionEditor({code,data,go,reload,notify,readOnly,onSaved,onDirty}:P
         <div className="promotion-impact" role="status"><strong>{qualifies} of {preview.length} meet every threshold</strong><span>{changed} outcome{changed===1?"":"s"} would change</span><span>{draft.policy.auto_approve?(data.automation?.enabled===false?"Program automation is paused":"Automatic approval enabled for this code"):"Manual approval for this code"}</span></div>
         <label className="field"><span>Preview rebate</span><select value={sample?.rebate.id||""} onChange={e=>setSampleId(e.target.value)}>{preview.map(x=><option key={x.rebate.id} value={x.rebate.id}>{x.rebate.first_name} {x.rebate.last_name} · {x.rebate.tracking_number}</option>)}</select></label>
         {sample&&<><div className="promotion-example"><b>{sample.rebate.demo_note||`${sample.rebate.first_name} ${sample.rebate.last_name}`}</b><span>{sample.rebate.system_size_kw||"Unknown"} kW · {sample.rebate.state} · {sample.rebate.financier}</span><span>Saved: {label(sample.before)} <ChevronRight size={14}/> Preview: <strong>{label(sample.after)}</strong></span></div>
-          <ol className="promotion-checks">{sample.after.checks.filter(c=>["window","system","state","financier","proof","crm","serial"].includes(c.id)).map(c=><li key={c.id}><div><b>{c.label}</b><small>{c.detail}</small></div><span className={`condition-result result-${c.status}`}>{c.notRequired?"Not required":c.status==="pass"?"Satisfied":c.status==="fail"?"Not satisfied":"Needs review"}</span></li>)}</ol></>}
+          <ol className="promotion-checks">{sample.after.checks.filter(c=>["amount","window","system","state","financier","proof","crm","serial"].includes(c.id)).map(c=><li key={c.id}><div><b>{c.label}</b><small>{c.detail}</small>{c.notice&&<small className="cond-notice">{c.notice}</small>}</div><span className={`condition-result result-${c.status}`}>{c.notRequired?"Not required":c.status==="pass"?"Satisfied":c.status==="fail"?"Not satisfied":"Needs review"}</span></li>)}</ol></>}
       </>:<Empty title={parsed.success?"No pending rebates for this code":"Complete the settings to preview"} text={parsed.success?"Pending claims appear here when submitted with this promotion code.":"Fix the highlighted settings above to evaluate pending rebates."}/>}
     </section>
   </div>;

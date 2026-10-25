@@ -18,7 +18,7 @@ try{
   await page.getByRole('heading',{name:'Register your rebate.',exact:true}).waitFor();
   const fields={first_name:'Solar',last_name:`Test ${runId}`,email,phone:'(555) 010-7788',address1:`${runId%10000000} Sunshine Way`,city:'San Diego',zip:'92101',date_of_sale:'2026-09-01',sales_rep_name:'Jordan Lee',certified_by:'Solar Test'};
   for(const [name,value] of Object.entries(fields))await page.locator(`[name="${name}"]`).fill(value);
-  await page.locator('[name="state"]').selectOption('CA');await page.locator('[name="rebate_code"]').selectOption('AxiaSummer2026');await page.locator('[name="financier"]').selectOption('Cash');await page.locator('[name="certified"]').check();
+  await page.locator('[name="state"]').selectOption('CA');await page.locator('[name="rebate_code"]').fill('axiasummer2026');await page.locator('[name="financier"]').selectOption('Cash');await page.locator('[name="certified"]').check();
   await page.getByRole('button',{name:'Register my rebate'}).click();await page.getByRole('heading',{name:"You're registered!",exact:true}).waitFor();
   const tracking=await page.locator('.tracking-result strong').innerText();assert.match(tracking,/^\d{10}$/);pass('pre-installation wizard persists a registration and returns a tracking number');
   const initial=await post({action:'track',tracking_number:tracking});assert.equal(initial.status,'REBATE_REGISTRATION');assert.equal(initial.amount,1500);assert.equal(initial.email,undefined);pass('public tracking returns status without customer contact data');

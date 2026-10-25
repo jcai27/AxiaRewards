@@ -44,8 +44,8 @@ export function DecisionRecord({rebate:r,data,go,reload,notify,readOnly,onDecide
   async function decide(){
     setBusy(true);setError("");
     try{
-      await api({action:"review",ids:[r.id],status:confirm,reasons:{[r.id]:reasonValue}});
-      notify(`Rebate ${r.tracking_number} ${confirm==="APPROVED"?"approved":"declined"}.`);
+      const d=await api({action:"review",ids:[r.id],status:confirm,reasons:{[r.id]:reasonValue}});
+      notify(`Rebate ${r.tracking_number} ${confirm==="APPROVED"?"approved":"declined"}.${d.duplicates_declined?` ${d.duplicates_declined} duplicate${d.duplicates_declined===1?"":"s"} declined automatically.`:""}`);
       setConfirm("");onDecided?.(r);await reload();
     }catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
@@ -53,7 +53,7 @@ export function DecisionRecord({rebate:r,data,go,reload,notify,readOnly,onDecide
     <header className="record-head"><h2>Rebate decision record</h2><span>Axia Rebate Program · {ev.version}</span></header>
     <dl className="record-ref">
       <div><dt>Rebate</dt><dd>{r.tracking_number}</dd></div>
-      <div><dt>Amount</dt><dd>{money(r.rebate_amount)}</dd></div>
+      <div><dt>Amount</dt><dd>{money(r.rebate_amount)}{r.rebate_capped==="max"&&<span className="tag warn-tag">Capped at max</span>}</dd></div>
       <div><dt>Campaign</dt><dd><button className="tracking-link" onClick={()=>go(`/promotion-codes?code=${encodeURIComponent(r.rebate_code)}`)}>{r.rebate_code}</button></dd></div>
       <div><dt>Submitted</dt><dd>{dateLabel(r.date_submitted)}</dd></div>
     </dl>
@@ -62,7 +62,7 @@ export function DecisionRecord({rebate:r,data,go,reload,notify,readOnly,onDecide
       <h3>{g}</h3>
       <ol>{ev.checks.filter(c=>RULES.find(rule=>rule.id===c.id)?.group===g).map(c=><li key={c.id} className={`cond cond-${c.status}`}>
         <span className="cond-n">{conditionNumber(c.id)}</span>
-        <div><b>{c.label}</b><small>{c.detail}</small></div>
+        <div><b>{c.label}</b><small>{c.detail}</small>{c.notice&&<small className="cond-notice" role="note">{c.notice}</small>}</div>
         <span className="cond-status">{c.notRequired?"Not required":statusWord[c.status]}</span>
       </li>)}</ol>
     </section>)}</div>
@@ -121,8 +121,8 @@ export function ReviewQueue({data,go,reload,notify,readOnly}:PageProps){
   async function applyBulk(){
     setBusy(true);setError("");
     try{
-      if(bulk==="SUGGESTED"){const d=await api({action:"apply-recommendations",items:suggestions.map(r=>({id:r.id,recommendation:get(r).recommendation}))});notify(`${d.applied} engine suggestion${d.applied===1?"":"s"} applied.${d.skipped?` ${d.skipped} skipped because they changed.`:""}`);}
-      else{const d=await api({action:"review",ids:checked,status:bulk,reasons:Object.fromEntries(selectedRows.map(r=>[r.id,get(r).declineReason||bulkReason]))});notify(`${d.count} rebate${d.count!==1?"s":""} ${bulk==="APPROVED"?"approved":"declined"}.`);}
+      if(bulk==="SUGGESTED"){const d=await api({action:"apply-recommendations",items:suggestions.map(r=>({id:r.id,recommendation:get(r).recommendation}))});notify(`${d.applied} engine suggestion${d.applied===1?"":"s"} applied.${d.skipped?` ${d.skipped} skipped because they changed.`:""}${d.duplicates_declined?` ${d.duplicates_declined} duplicate${d.duplicates_declined===1?"":"s"} declined automatically.`:""}`);}
+      else{const d=await api({action:"review",ids:checked,status:bulk,reasons:Object.fromEntries(selectedRows.map(r=>[r.id,get(r).declineReason||bulkReason]))});notify(`${d.count} rebate${d.count!==1?"s":""} ${bulk==="APPROVED"?"approved":"declined"}.${d.duplicates_declined?` ${d.duplicates_declined} duplicate${d.duplicates_declined===1?"":"s"} declined automatically.`:""}`);}
       setChecked([]);setBulk("");await reload();
     }catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
@@ -183,7 +183,7 @@ export function RebateDetail({tracking,data,go,reload,notify,readOnly}:PageProps
   const fraud=r.fraud_case_id?data.fraud?.find((f:Row)=>f.id===r.fraud_case_id):undefined;
   const invoice=r.program_invoice_id?data.invoices?.find((i:Row)=>i.id===r.program_invoice_id):undefined;
   const sameCustomer:Row[]=r.customer_id?data.rebates.filter((x:Row)=>x.customer_id===r.customer_id&&x.id!==r.id):[];
-  const relatedRows=[...related.address.map(x=>[x,"Same address and code"]),...related.invoice.map(x=>[x,"Same purchase invoice"]),...related.serial.map(x=>[x,"Same module serial"]),...sameCustomer.map(x=>[x,"Same customer"])] as [Row,string][];
+  const relatedRows=[...related.address.map(x=>[x,x.rebate_code===r.rebate_code?"Same address and code":`Same address · ${x.rebate_code}`]),...related.invoice.map(x=>[x,"Same purchase invoice"]),...related.serial.map(x=>[x,"Same module serial"]),...sameCustomer.map(x=>[x,"Same customer"])] as [Row,string][];
   return <>
     <button className="back-link" onClick={()=>window.history.length>1?window.history.back():go("/pending-rebates")}><ChevronLeft size={15}/> Back</button>
     <h1 className="sr-only">{fullName(r)}, rebate {r.tracking_number}</h1>
@@ -193,7 +193,7 @@ export function RebateDetail({tracking,data,go,reload,notify,readOnly}:PageProps
         <section className="panel"><div className="panel-heading"><h3>Customer</h3>{customer&&<button className="text-button" onClick={()=>go(`/customers?q=${customer.id}`)}>Profile</button>}</div>
           <Facts items={[["Name",fullName(r)],["Email",r.email],["Phone",r.phone],["Address",[r.address1,r.address2].filter(Boolean).join(", ")],["City, state, ZIP",`${r.city}, ${r.state} ${r.zip}`],["Reward type",r.reward_type]]}/></section>
         <section className="panel"><div className="panel-heading"><h3>Installation and purchase</h3></div>
-          <Facts items={[["Dealer",r.dealer_name],["Sales representative",r.sales_rep_name],["Date of sale",dateLabel(r.date_of_sale)],["Contract signed",r.proof_of_purchase?dateLabel(r.proof_of_purchase):"Not received"],["Creatio status",r.crm_install_status?`${String(r.crm_install_status).toLowerCase().replace("_"," ")}${r.crm_source==="demo-simulated"?" (simulated)":""}`:"Not received"],["PTO date",dateLabel(r.pto_date)],["Financing",r.financier],["Module serial",r.module_serial],["System size",r.system_size_kw?`${r.system_size_kw} kW`:""],["Purchase invoice",r.invoice_number]]}/></section>
+          <Facts items={[["Dealer",r.dealer_name],["Sales representative",r.sales_rep_name],["Date of sale",dateLabel(r.date_of_sale)],["Contract signed",r.proof_of_purchase?dateLabel(r.proof_of_purchase):"Not received"],["Creatio status",r.crm_install_status?`${String(r.crm_install_status).toLowerCase().replace("_"," ")}${r.crm_source==="demo-simulated"?" (simulated)":""}`:"Not received"],["PTO date",dateLabel(r.pto_date)],["Financing",r.financier],...(r.enfin_monthly_payment?[["EnFin monthly payment",`${money(r.enfin_monthly_payment)}${r.enfin_source==="demo-simulated"?" (simulated)":""}`] as [string,React.ReactNode]]:[]),["Module serial",r.module_serial],["System size",r.system_size_kw?`${r.system_size_kw} kW`:""],["Purchase invoice",r.invoice_number]]}/></section>
         <section className="panel"><div className="panel-heading"><h3>Decision and invoice</h3></div>
           <Facts items={[["Status",<Pill key="s" status={r.status}/>],["Decided by",r.approved_declined_by],["How",sourceLabel(r)],["Weekly invoice",invoice?<button key="i" className="tracking-link" onClick={()=>go(`/invoices/${invoice.invoice_number}`)}>{invoice.invoice_number}</button>:approvedStatuses.includes(r.status)?"Not yet invoiced":"After approval"]]}/></section>
         <section className="panel"><div className="panel-heading"><h3>Risk</h3></div>

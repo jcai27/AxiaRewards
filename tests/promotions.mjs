@@ -47,7 +47,7 @@ try{
   let data=await admin();originalPlus=data.codes.find(c=>c.id==='promo-plus');assert.ok(originalPlus);
   assert.equal(data.codes.find(c=>c.id==='promo-flex').policy.submission_window_days,180);
   assert.equal(data.codes.find(c=>c.id==='promo-storage').policy.auto_approve,false);
-  assert.equal(data.rebates.filter(r=>r.promotion_demo).length,6);pass('additive demo includes three distinct policies and six linked claims');
+  assert.equal(data.rebates.filter(r=>r.promotion_demo).length,12);pass('additive demo includes four distinct policies and twelve linked claims');
 
   await page.getByRole('button',{name:/^AXIA-PLUS-2026/}).click();
   const deadline=page.getByRole('spinbutton',{name:'Submission deadline (days after PTO)'});

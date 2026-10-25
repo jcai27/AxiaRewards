@@ -37,7 +37,7 @@ export function AutomationControl({data,reload,notify,readOnly}:Omit<PageProps,"
   const ready=data.rebates.filter((r:Row)=>r.status==="PENDING"&&!r.payment_hold&&get(r).recommendation==="APPROVE"&&get(r).promotion?.settings.auto_approve).length;
   const [confirm,setConfirm]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
   async function toggle(){setBusy(true);try{await api({action:"set-automation",enabled:!automation.enabled});notify(`Automatic approval ${automation.enabled?"paused":"turned on"}.`);await reload();}catch(e){notify((e as Error).message);}finally{setBusy(false);}}
-  async function run(){setBusy(true);setError("");try{const r=await api({action:"run-engine"});setConfirm(false);notify(`${r.approved} rebate${r.approved===1?"":"s"} approved automatically. ${r.review+r.decline} held for review.`);await reload();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+  async function run(){setBusy(true);setError("");try{const r=await api({action:"run-engine"});setConfirm(false);notify(`${r.approved} rebate${r.approved===1?"":"s"} approved automatically.${r.duplicates_declined?` ${r.duplicates_declined} duplicate${r.duplicates_declined===1?"":"s"} declined.`:""} ${r.review+r.decline} held for review.`);await reload();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   const last=automation.last_run;
   return <div className={`automation-bar ${automation.enabled?"on":"off"}`}>
     <span className="automation-state"><i aria-hidden="true"/>Automatic approval {automation.enabled?"on":"paused"}</span>
@@ -132,8 +132,8 @@ export function Rebates({path,data,reload,notify,go,readOnly}:PageProps&{path:st
   async function submit(){
     setBusy(true);setError("");
     try{
-      if(confirm==="SUGGESTED"){const d=await api({action:"apply-recommendations",items:suggestions.map(r=>({id:r.id,recommendation:get(r).recommendation}))});notify(`${d.applied} engine suggestion${d.applied===1?"":"s"} applied.${d.skipped?` ${d.skipped} skipped because they changed.`:""}`);}
-      else{const d=await api({action:"review",ids:checked,status:confirm,reasons:Object.fromEntries(selected.map(r=>[r.id,reasonFor(r)]))});notify(`${d.count} rebate${d.count!==1?"s":""} ${confirm==="APPROVED"?"approved":"declined"}.`);}
+      if(confirm==="SUGGESTED"){const d=await api({action:"apply-recommendations",items:suggestions.map(r=>({id:r.id,recommendation:get(r).recommendation}))});notify(`${d.applied} engine suggestion${d.applied===1?"":"s"} applied.${d.skipped?` ${d.skipped} skipped because they changed.`:""}${d.duplicates_declined?` ${d.duplicates_declined} duplicate${d.duplicates_declined===1?"":"s"} declined automatically.`:""}`);}
+      else{const d=await api({action:"review",ids:checked,status:confirm,reasons:Object.fromEntries(selected.map(r=>[r.id,reasonFor(r)]))});notify(`${d.count} rebate${d.count!==1?"s":""} ${confirm==="APPROVED"?"approved":"declined"}.${d.duplicates_declined?` ${d.duplicates_declined} duplicate${d.duplicates_declined===1?"":"s"} declined automatically.`:""}`);}
       setChecked([]);setConfirm("");await reload();
     }catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
